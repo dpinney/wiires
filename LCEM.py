@@ -123,11 +123,12 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   wind_output_ds.reset_index(drop=True, inplace=True)
 
 
-  with open(load, 'r') as file:
-    reader = csv.reader(file, delimiter = ',')
-    loadList = list(reader)
-  demand = pd.Series(loadList)
-  # demand = pd.Series(load)
+  # note: .csv must contain one column of 8760 values 
+  if isinstance(load, str) == True:
+  	if load.endswith('.csv'):
+  		demand = pd.read_csv(load, delimiter = ',', squeeze = True)
+  else:
+  	demand = pd.Series(load) 
 
   merged_frame = pd.DataFrame({
       'solar':solar_output_ds,
@@ -205,7 +206,7 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   fossil_cost = sum(fossil_cost)
 
   tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost
-  return mix_df, mix_chart, tot_cost, sum(mix_df['fossil'])
+  return mix_df[0:5], mix_chart.show(), tot_cost, sum(mix_df['fossil'])
 
 
 def calc_ren_mix(load, solar, wind, batt, latitude, longitude, year):

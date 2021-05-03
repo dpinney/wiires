@@ -1,35 +1,18 @@
-import windpowerlib
-import pvlib
-from windpowerlib import WindTurbine
-import urllib
-from feedinlib import WindPowerPlant, Photovoltaic, get_power_plant_data, era5
-import os
-import glob
-import xarray
-import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+''' 
+Adds a custom count of Bergey Excel 15 wind turbines to each bus of an OpenDSS circuit.
+Includes functions to transform circuit between string and tree formats. 
+Includes function to add monitors at each load of an OpenDSS tree.
+Includes function to remove duplicate elements from an OpenDSS tree. 
+'''
+
+# import os
+# import glob
+# import xarray
+# import pandas as pd
+# import matplotlib.pyplot as plt
+# import plotly.graph_objects as go
 import opendssdirect as dss
-import numpy as np
-from scipy.optimize import minimize 
-import warnings
-
-def runDssCommand(dsscmd):
-	from opendssdirect import run_command, Error
-	x = run_command(dsscmd)
-	latest_error = Error.Description()
-	if latest_error != '':
-		print('OpenDSS Error:', latest_error)
-	return x
-
-
-def runDss(dssString):
-    DSSNAME = 'lehigh.dss'
-    with open(DSSNAME,'w') as lehigh:
-        lehigh.write(dssString)
-    x = runDssCommand(f'Redirect "{DSSNAME}"')
-    return x
-
+import fire
 
 def dssToTree(pathToDss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
@@ -46,7 +29,7 @@ def dssToTree(pathToDss):
     contents[i] = line.strip()
 		# Comment removal
     bangLoc = line.find('!')
-    if bangLoc != -1:
+    if bangLoc != -1: 
       contents[i] = line[:bangLoc]
     # Join using the tilde (~) syntax
     if line.startswith('~'):
@@ -136,22 +119,17 @@ def treeToDss(treeObject, outputPath):
         print(line)
     outFile.write(line + '\n')
   outFile.close()
+  return outFile
 
 
-def addTurbine(dssTree):
-	# add a monitor at each load immediately before solve statement
-	for i in loads:
-	  t.insert(t.index([x for x in t if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
-	  'object': f'monitor.{i}',
-	  'element': i,
-	  'terminal': '1'})
-
-	buses = [x.get('bus') for x in t if x.get('!CMD','').startswith('setbusxy')]
-
-	# add a wind turbine at each bus immediately before monitor definitions
-	for i in buses:
-	  for s in range(157):
-	    t.insert(t.index([x for x in t if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
+def addTurbine(dssTree, turbCount):
+  t = dssTree
+  # get names of all buses
+  buses = [x.get('bus') for x in t if x.get('!CMD','').startswith('setbusxy')]
+  # add a wind turbine at each bus immediately before solve statement 
+  for i in buses:
+    for s in range(turbCount):
+      t.insert(t.index([x for x in t if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
 	    'object': f'generator.wind_{i}_{s}',
 	    'bus': f'{i}.1.2.3',
 	    'kva': '15.6',
@@ -159,4 +137,46 @@ def addTurbine(dssTree):
 	    'conn': 'delta',
 	    'duty': 'wind',
 	    'model': '1'})
+  return t
 
+
+def addMonitor(dssTree):
+  # get names of all loads	
+  loads = [y.get('object') for y in t if y.get('object','').startswith('load.')]
+  # add a monitor at each load immediately before solve statement
+  for i in loads:
+	  t.insert(t.index([x for x in t if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+	  'object': f'monitor.{i}',
+	  'element': i,
+	  'terminal': '1'})
+  # get names of all substations
+  substations = [x.get('object') for x in t if x.get('object','').startswith('vsource')]
+  # add a monitor at each substation immediately before solve statement
+  for i in substations:
+    t.insert(t.index([x for x in t if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+	  'object': f'monitor.{i}',
+	  'element': i,
+	  'terminal': '1',
+	  'mode': '1'})		
+    # add an export statement for each monitor 
+    exportList = substations + loads
+    for i in exportList:
+      t.insert(t.index([x for x in t if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
+    print(t)
+  return dssTree
+
+
+def removeDups(dssTree):
+	# remove duplicate dictionaries 
+	seen = set()
+	new_l = []
+	for d in dssTree:
+	    tup = tuple(d.items())
+	    if tup not in seen:
+	        seen.add(tup)
+	        new_l.append(d)
+	return new_l
+
+
+if __name__ == '__main__':
+	fire.Fire()

@@ -13,6 +13,7 @@ Includes function to remove duplicate elements from an OpenDSS tree.
 # import plotly.graph_objects as go
 import opendssdirect as dss
 import fire
+import pickle
 
 def dssToTree(pathToDss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
@@ -141,6 +142,8 @@ def addTurbine(dssTree, turbCount):
 
 
 def addMonitor(dssTree):
+  t = dssTree
+
   # get names of all loads	
   loads = [y.get('object') for y in t if y.get('object','').startswith('load.')]
   # add a monitor at each load immediately before solve statement
@@ -162,8 +165,7 @@ def addMonitor(dssTree):
     exportList = substations + loads
     for i in exportList:
       t.insert(t.index([x for x in t if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
-    print(t)
-  return dssTree
+  return t
 
 
 def removeDups(dssTree):

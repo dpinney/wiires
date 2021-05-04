@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from dssmanipulation import dssToTree
+import fire
 
 def scipyoptimize(dssString):
 	dssTree = dssToTree(dssString)
@@ -65,5 +66,6 @@ def scipyoptimize(dssString):
 	).show()
 	print('Maximum storage capacity used by system in kW: ' + str(max(cumsum)))
 
-	if __name__ == '__main__':
+
+if __name__ == '__main__':
 	fire.Fire()

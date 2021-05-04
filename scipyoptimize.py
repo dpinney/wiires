@@ -51,6 +51,7 @@ def scipyoptimize(dssString):
 	    })
 
 	# plot generation, load, and storage
+	plotly_horiz_legend = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
 	feedInFigure = go.Figure(
 	    [
 	        go.Scatter(x=plotElements.generation.index, y=plotElements.generation, name='Wind Gen (kW)'),

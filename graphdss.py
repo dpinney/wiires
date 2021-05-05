@@ -21,48 +21,59 @@ def runDssCommand(dsscmd):
 	return x
 
 
-def runDss(dssFile):
-    dssString = open(dssFile, "r").read()
-    DSSNAME = 'dssString.dss'
+def runDss(dss_file):
+    dss_string = open(dss_file, "r").read()
+    DSSNAME = 'dss_string.dss'
     with open(DSSNAME,'w') as file:
-        file.write(dssString)
+        file.write(dss_string)
     x = runDssCommand(f'Redirect "{DSSNAME}"')
     return x
 
 
-def graphThreePhase(csvpath):
-	zzz = pd.read_csv(csvpath)
+def graphThreePhase(csv_path):
+	csv_data = pd.read_csv(csv_path)
 
 	# convert voltages to  decimal portions of the nominal (2400 for 3 phase)
-	unitVolts = []
+	unit_volts = []
 	for i in range(1, 4):
-		unitVolts.append([])
-		for x in zzz[f' V{i}']:
-			unitVolts[i-1].append(x/2400)
-		zzz[f' V{i}'] = unitVolts[i-1]
+		unit_volts.append([])
+		for x in csv_data[f' V{i}']:
+			unit_volts[i-1].append(x/2400)
+		csv_data[f' V{i}'] = unit_volts[i-1]
+
+	# overload hosting capactiy error message 
+	for x in range(len(unit_volts)):
+		for y in unit_volts[x]:
+			if y > 1.05:
+				print('Error: reached hosting capacity')
 
 	# plot
-	zzz.plot(0, [2,4,6])
+	csv_data.plot(0, [2,4,6])
 	plt.xlim([0,96])
-	return plt.show()
+	plt.show()
 
 
-def graphSinglePhase(csvpath):
-	z = pd.read_csv(csvpath)
+def graphSinglePhase(csv_path):
+	csv_data = pd.read_csv(csv_path)
 
 	# convert voltages to decimal portions of the nominal (2400 or 280 for single phase)
-	unitVolts = []
-	for x in z[' V1']:
+	unit_volts = []
+	for x in csv_data[' V1']:
 	  if x > 1000:
-	    unitVolts.append(x/2400)
+	    unit_volts.append(x/2400)
 	  else:
-	    unitVolts.append(x/280)
-	z[' V1'] = unitVolts
+	    unit_volts.append(x/280)
+	csv_data[' V1'] = unit_volts
+
+	# overload hosting capactiy error message 
+	for x in unit_volts:
+		if x > 1.05:
+			print('Error: reached hosting capacity')
 
 	# plot
-	z.plot(0, [2])
+	csv_data.plot(0, [2])
 	plt.xlim([0,96])
-	return plt.show()
+	plt.show()
 
 
 if __name__ == '__main__':

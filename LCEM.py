@@ -96,11 +96,12 @@ def get_solar(weather_ds):
   solar_output_ds = solar_feedin_ac / solar_feedin_ac.max()
   return solar_output_ds
 
-def get_wind(weather_ds):
+def get_wind(weather_ds, hourly_loadshapes):
   bergey_turbine_data = {
       'nominal_power': 15600,  # in W
       'hub_height': 24,  # in m  
       'power_curve': pd.DataFrame(
+              # https://github.com/wind-python/windpowerlib <-- for info on adding custom loadshapes 
               data={'value': [p * 1000 for p in [
                         0, 0, 0.108, 0.679, 2.074, 3.824, 6.089, 8.500, 11.265, 13.664, 15.612, 16.876, 18.212, 19.096, 20.355, 20.611, 19.687]],  # kW -> W
                     'wind_speed': [1.0, 2.01, 2.99, 4.01, 5.00, 6.00, 7.00, 8.00, 9.00, 9.99, 11.01, 11.97, 12.99, 13.99, 15.00, 15.97, 16.47]})  # in m/s

@@ -14,6 +14,7 @@ Includes function to remove duplicate elements from an OpenDSS tree.
 import opendssdirect as dss
 import fire
 import pickle
+import copy
 
 def dssToTree(pathToDss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
@@ -120,43 +121,41 @@ def treeToDss(treeObject, outputPath):
         print(line)
     outFile.write(line + '\n')
   outFile.close()
-  return outFile
 
 
-def addTurbine(dssTree, turbCount):
-  t = dssTree
+def addTurbine(dssTree, turbCount, kva):
+  treeCopy = copy.deepcopy(dssTree)
   # get names of all buses
-  buses = [x.get('bus') for x in t if x.get('!CMD','').startswith('setbusxy')]
+  buses = [x.get('bus') for x in treeCopy if x.get('!CMD','').startswith('setbusxy')]
   # add a wind turbine at each bus immediately before solve statement 
   for i in buses:
     for s in range(turbCount):
-      t.insert(t.index([x for x in t if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
+      treeCopy.insert(treeCopy.index([x for x in treeCopy if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
 	    'object': f'generator.wind_{i}_{s}',
 	    'bus': f'{i}.1.2.3',
-	    'kva': '15.6',
+	    'kva': kva,
 	    'pf': '1.0',
 	    'conn': 'delta',
 	    'duty': 'wind',
 	    'model': '1'})
-  return t
+  return treeCopy
 
 
 def addMonitor(dssTree):
-  t = dssTree
-
+  treeCopy = copy.deepcopy(dssTree)
   # get names of all loads	
-  loads = [y.get('object') for y in t if y.get('object','').startswith('load.')]
+  loads = [y.get('object') for y in treeCopy if y.get('object','').startswith('load.')]
   # add a monitor at each load immediately before solve statement
   for i in loads:
-	  t.insert(t.index([x for x in t if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+	  treeCopy.insert(t.index([x for x in treeCopy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1'})
   # get names of all substations
-  substations = [x.get('object') for x in t if x.get('object','').startswith('vsource')]
+  substations = [x.get('object') for x in treeCopy if x.get('object','').startswith('vsource')]
   # add a monitor at each substation immediately before solve statement
   for i in substations:
-    t.insert(t.index([x for x in t if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+    treeCopy.insert(t.index([x for x in treeCopy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1',
@@ -164,8 +163,8 @@ def addMonitor(dssTree):
     # add an export statement for each monitor 
     exportList = substations + loads
     for i in exportList:
-      t.insert(t.index([x for x in t if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
-  return t
+      treeCopy.insert(treeCopy.index([x for x in treeCopy if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
+  return treeCopy
 
 
 def removeDups(dssTree):
@@ -178,7 +177,3 @@ def removeDups(dssTree):
 	        seen.add(tup)
 	        new_l.append(d)
 	return new_l
-
-
-if __name__ == '__main__':
-	fire.Fire()

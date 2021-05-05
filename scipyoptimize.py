@@ -7,16 +7,15 @@ import fire
 
 
 def scipyOptimize(dss_tree):
-	dssTree = dssToTree(dssString)
 	# gets load loadshapes 
-	load = [y.get('mult') for y in dssTree if y.get('object','').startswith('loadshape.6')]
+	load = [y.get('mult') for y in dss_tree if y.get('object','').startswith('loadshape.6')]
 	# combine loads into 1 list
 	load = [load[i][1:len(load[i])-1].split(',') for i in range(len(load))]
 	# flattens all load lists into one list for total load on the circuit 
 	zipped_lists = zip(load[0],load[1], load[2], load[3], load[4], load[5], load[6],load[7], load[8], load[9], load[10], load[11],load[12], load[13], load[14])
 	allLoads = [float(x) + float(y) + float(z) + float(a) + float(b) + float(c) + float(d) + float(e) + float(f) + float(g) + float(h) + float(i) + float(j) + float(k) + float(l) for (x,y,z,a,b,c,d,e,f,g,h,i,j,k,l) in zipped_lists]
 	# gets generator loadshapes
-	windGen = [y.get('mult') for y in dssTree if y.get('object','').startswith('loadshape.w')]
+	windGen = [y.get('mult') for y in dss_tree if y.get('object','').startswith('loadshape.w')]
 	windGen = windGen[0][1:len(windGen[0])-1].split(',')
 	windGen = [float(i) for i in windGen]
 

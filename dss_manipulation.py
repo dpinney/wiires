@@ -5,24 +5,18 @@ Includes function to add monitors at each load of an OpenDSS tree.
 Includes function to remove duplicate elements from an OpenDSS tree. 
 '''
 
-# import os
-# import glob
-# import xarray
-# import pandas as pd
-# import matplotlib.pyplot as plt
-# import plotly.graph_objects as go
 import opendssdirect as dss
 import fire
 import pickle
 import copy
 
-def dssToTree(pathToDss):
+def dss_to_tree(path_to_dss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
 	Note that we only support a VERY specifically-formatted DSS file.'''
 	# TODO: Consider removing the handling for 'wdg=' syntax within this block, as we will not support it in an input file. 
 	# Ingest file.
-  with open(pathToDss, 'r') as dssFile:
-    contents = dssFile.readlines()
+  with open(path_to_dss, 'r') as dss_file:
+    contents = dss_file.readlines()
 	# Lowercase everything. OpenDSS is case insensitive.
   contents = [x.lower() for x in contents]
 	# Clean up the file.
@@ -73,7 +67,7 @@ def dssToTree(pathToDss):
 						# v = file content array, cast as a string
           else:
             k,v = contents[i][j].split('=')
-					# TODO: Should we pull the multiwinding transformer handling out of here and put it into dssFilePrep()?
+					# TODO: Should we pull the multiwinding transformer handling out of here and put it into dss_filePrep()?
           if k == 'wdg':
             continue
           if (k in ob.keys()) or (convTbl.get(k,k) in ob.keys()): # if the single key already exists in the object, then this is the second pass. If pluralized key exists, then this is the 2+nth pass
@@ -99,19 +93,19 @@ def dssToTree(pathToDss):
     if type(ob) is OrderedDict:
       contents[i] = ob
 	# Print to file
-	#with open('dssTreeRepresentation.csv', 'w') as outFile:
+	#with open('dssTreeRepresentation.csv', 'w') as out_file:
 	#	ii = 1
 	#	for k,v in contents.items():
-	#		outFile.write(str(k) + '\n')
+	#		out_file.write(str(k) + '\n')
 	#		ii = ii + 1
 	#		for k2,v2 in v.items():
-	#			outFile.write(',' + str(k2) + ',' + str(v2) + '\n')
+	#			out_file.write(',' + str(k2) + ',' + str(v2) + '\n')
   return list(contents.values())
 
 
-def treeToDss(treeObject, outputPath):
-  outFile = open(outputPath, 'w')
-  for ob in treeObject:
+def tree_to_dss(tree_object, output_path):
+  out_file = open(output_path, 'w')
+  for ob in tree_object:
     line = ob['!CMD']
     for key in ob:
       if not key.startswith('!'):
@@ -119,18 +113,18 @@ def treeToDss(treeObject, outputPath):
       if key.startswith('!TEST'):
         line = f"{line} {ob['!TEST']}"
         print(line)
-    outFile.write(line + '\n')
-  outFile.close()
+    out_file.write(line + '\n')
+  out_file.close()
 
 
-def addTurbine(dssTree, turbCount, kva):
-  treeCopy = copy.deepcopy(dssTree)
+def add_turbine(dss_tree, turb_count, kva):
+  tree_copy = copy.deepcopy(dss_tree)
   # get names of all buses
-  buses = [x.get('bus') for x in treeCopy if x.get('!CMD','').startswith('setbusxy')]
+  buses = [x.get('bus') for x in tree_copy if x.get('!CMD','').startswith('setbusxy')]
   # add a wind turbine at each bus immediately before solve statement 
   for i in buses:
-    for s in range(turbCount):
-      treeCopy.insert(treeCopy.index([x for x in treeCopy if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
+    for s in range(turb_count):
+      tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
 	    'object': f'generator.wind_{i}_{s}',
 	    'bus': f'{i}.1.2.3',
 	    'kva': kva,
@@ -138,40 +132,40 @@ def addTurbine(dssTree, turbCount, kva):
 	    'conn': 'delta',
 	    'duty': 'wind',
 	    'model': '1'})
-  return treeCopy
+  return tree_copy
 
 
-def addMonitor(dssTree):
-  treeCopy = copy.deepcopy(dssTree)
+def add_monitor(dss_tree):
+  tree_copy = copy.deepcopy(dss_tree)
   # get names of all loads	
-  loads = [y.get('object') for y in treeCopy if y.get('object','').startswith('load.')]
+  loads = [y.get('object') for y in tree_copy if y.get('object','').startswith('load.')]
   # add a monitor at each load immediately before solve statement
   for i in loads:
-	  treeCopy.insert(t.index([x for x in treeCopy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+	  tree_copy.insert(t.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1'})
   # get names of all substations
-  substations = [x.get('object') for x in treeCopy if x.get('object','').startswith('vsource')]
+  substations = [x.get('object') for x in tree_copy if x.get('object','').startswith('vsource')]
   # add a monitor at each substation immediately before solve statement
   for i in substations:
-    treeCopy.insert(t.index([x for x in treeCopy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+    tree_copy.insert(t.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1',
 	  'mode': '1'})		
     # add an export statement for each monitor 
-    exportList = substations + loads
-    for i in exportList:
-      treeCopy.insert(treeCopy.index([x for x in treeCopy if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
-  return treeCopy
+    export_list = substations + loads
+    for i in export_list:
+      tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('export')][0]), {'!CMD': 'export ' f'monitors {i}'})
+  return tree_copy
 
 
-def removeDups(dssTree):
+def remove_dups(dss_tree):
 	# remove duplicate dictionaries 
 	seen = set()
 	new_l = []
-	for d in dssTree:
+	for d in dss_tree:
 	    tup = tuple(d.items())
 	    if tup not in seen:
 	        seen.add(tup)

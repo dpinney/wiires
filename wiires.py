@@ -1,4 +1,4 @@
 import LCEM
-import dssmanipulation
-import graphdss
-import scipyoptimize
+import dss_manipulation
+import graph_dss
+import scipy_optimize

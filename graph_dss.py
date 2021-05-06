@@ -12,25 +12,25 @@ import plotly.graph_objects as go
 import opendssdirect as dss
 import fire
 
-def runDssCommand(dsscmd):
+def run_dss_command(dss_cmd):
 	from opendssdirect import run_command, Error
-	x = run_command(dsscmd)
+	x = run_command(dss_cmd)
 	latest_error = Error.Description()
 	if latest_error != '':
 		print('OpenDSS Error:', latest_error)
 	return x
 
 
-def runDss(dss_file):
+def run_dss(dss_file):
     dss_string = open(dss_file, "r").read()
     DSSNAME = 'dss_string.dss'
     with open(DSSNAME,'w') as file:
         file.write(dss_string)
-    x = runDssCommand(f'Redirect "{DSSNAME}"')
+    x = run_dss_command(f'Redirect "{DSSNAME}"')
     return x
 
 
-def graphThreePhase(csv_path):
+def graph_three_phase(csv_path):
 	csv_data = pd.read_csv(csv_path)
 
 	# convert voltages to  decimal portions of the nominal (2400 for 3 phase)
@@ -53,7 +53,7 @@ def graphThreePhase(csv_path):
 	plt.show()
 
 
-def graphSinglePhase(csv_path):
+def graph_single_phase(csv_path):
 	csv_data = pd.read_csv(csv_path)
 
 	# convert voltages to decimal portions of the nominal (2400 or 280 for single phase)

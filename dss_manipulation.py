@@ -7,7 +7,6 @@ Includes function to remove duplicate elements from an OpenDSS tree.
 
 import opendssdirect as dss
 import fire
-import pickle
 import copy
 
 def dss_to_tree(path_to_dss):
@@ -141,7 +140,7 @@ def add_monitor(dss_tree):
   loads = [y.get('object') for y in tree_copy if y.get('object','').startswith('load.')]
   # add a monitor at each load immediately before solve statement
   for i in loads:
-	  tree_copy.insert(t.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+	  tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1'})
@@ -149,7 +148,7 @@ def add_monitor(dss_tree):
   substations = [x.get('object') for x in tree_copy if x.get('object','').startswith('vsource')]
   # add a monitor at each substation immediately before solve statement
   for i in substations:
-    tree_copy.insert(t.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+    tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	  'object': f'monitor.{i}',
 	  'element': i,
 	  'terminal': '1',

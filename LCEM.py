@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import opendssdirect as dss
 import numpy as np
-from scipy.optimize import minimize 
 import warnings
 import fire
 import csv
@@ -96,7 +95,7 @@ def get_solar(weather_ds):
   solar_output_ds = solar_feedin_ac / solar_feedin_ac.max()
   return solar_output_ds
 
-def get_wind(weather_ds, hourly_loadshapes):
+def get_wind(weather_ds):
   bergey_turbine_data = {
       'nominal_power': 15600,  # in W
       'hub_height': 24,  # in m  
@@ -178,13 +177,13 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   )
 
   # set levelized energy costs in dollars per Watt hour 
-  solar_cost = sum(mix_df['solar']) * 0.000_032
-  wind_cost = sum(mix_df['wind']) * 0.000_043
+  solar_cost = sum(mix_df['solar']) * 0.000_024
+  wind_cost = sum(mix_df['wind']) * 0.000_009
 
   ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
   CYCLES = sum(ABS_DIFF) * 0.5
   # multiply by LCOS 
-  storage_cost = CYCLES * 0.000_087
+  storage_cost = CYCLES * 0.000_055
 
   jan_demand = mix_df['fossil'][0:744]
   feb_demand = mix_df['fossil'][744:1416]
@@ -200,7 +199,7 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   dec_demand = mix_df['fossil'][8016:8760] 
   monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
 
-  energy_rate = 0.000_060 # $ per Watt
+  energy_rate = 0.000_020 # $ per Watt
   demand_rate = 20 # typical demand rate in $ per kW
   demand_rate = demand_rate / 1000 # $/kW --> $/W
   fossil_cost = [energy_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
@@ -284,7 +283,7 @@ def direct_optimal_mix(load, solar_max, wind_max, batt_max, solar_output_ds, win
         dec_demand = rendf['fossil'][8016:8760] 
         monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
 
-        energy_rate = 0.000_150 # $ per Watt
+        energy_rate = 0.000_020 # $ per Watt
         demand_rate = 20 # typical demand rate in $ per kW
         demand_rate = demand_rate / 1000
         fossil_cost = [energy_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]

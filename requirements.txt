@@ -1,1 +1,11 @@
 windpowerlib
+pvlib
+feedinlib
+opendssdirect
+scipy.optimize
+fire
+plotly.graphobjects
+pandas
+numpy
+xarray
+matplotlib.pyplot

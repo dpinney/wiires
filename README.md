@@ -39,7 +39,7 @@ set defaultbasefrequency=60 ...
 >>> # graph a single phase voltage chart 
 >>> wiires.graph_dss.graph_single_phase("./monitor2_output.csv")
 ```
-
+![single_phase](https://user-images.githubusercontent.com/65563537/117373222-d367f680-ae98-11eb-911e-ce58068be35b.png)
 ```
 >>> # find the lowest cost energy mix using grid search for a year of hourly load shapes given a location and year
 >>> # function accepts loads (csv or list), max solar, wind, and storage capacity in Watts, latitude, longitude, year, and step size for grid search

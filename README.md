@@ -46,11 +46,22 @@ set defaultbasefrequency=60 ...
 >>> # solar, wind, and grid electricity costs as well as demand charge are preset but can be changed in code
 >>> LCEM = wiires.LCEM.optimal_mix("./loads.csv", 60_000_000, 60_000_000, 60_000_000, 39.952437, -75.16378, 2019, 5_000_000)
 >>> LCEM
+[792.3018640684181, 10000, 10000, 55000, 26211.31538862757]
 
 >>> # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
 >>> df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./loads.csv", 10_000_000, 10_000_000, 55_000_000, 39.952437, -75.16378, 2019)
-
+```
+![LCEM_graph](https://user-images.githubusercontent.com/65563537/117373430-32c60680-ae99-11eb-83e0-146f3efb739e.png)
+```
 >>> df
+   index  solar         wind  ...        charge  fossil  curtailment
+0      0    0.0  1966.564244  ...  55000.000000     0.0 -1175.116231
+1      1    0.0  1093.980222  ...  55000.000000     0.0  -303.968290
+2      2    0.0   367.990938  ...  54578.080055     0.0     0.000000
+3      3    0.0   332.184239  ...  54079.690885     0.0     0.000000
+4      4    0.0   523.140147  ...  53747.162622     0.0     0.000000
 >>> total_cost
+792.3018640684181
 >>> fossil_total
+26211.31538862757
 ```

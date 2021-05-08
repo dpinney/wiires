@@ -1,0 +1,17 @@
+name: wiires_tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install
+        run: pip install git+https://github.com/dpinney/wiires
+      - name: Test
+        run: python -c 'import wiires; wiires.tests'

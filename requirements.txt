@@ -1,11 +1,11 @@
 windpowerlib
 pvlib
 feedinlib
-OpenDSSDirect.py
-scipy.optimize
+OpenDSSDirect.py[extras]
+scipy
 fire
-plotly.graphobjects
+plotly
 pandas
 numpy
 xarray
-matplotlib.pyplot
+matplotlib

@@ -1,7 +1,7 @@
-git+https://github.com/wind-python/windpowerlib
-git+https://github.com/oemof/feedinlib
-pandas
+feedinlib
+windpowerlib
 pvlib
+pandas
 OpenDSSDirect.py[extras]
 scipy
 fire

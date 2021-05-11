@@ -14,6 +14,7 @@ def pre_install():
     check_call("pip install scipy".split())
     check_call("pip install fire".split())
     check_call("pip install matplotlib".split())
+    check_call("pip install plotly".split())
 
 class PreDevelopCommand(develop):
     def run(self):

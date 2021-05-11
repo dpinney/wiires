@@ -29,4 +29,5 @@ setup(
 	cmdclass={
 		'develop':PreDevelopCommand,
 		'install':PreInstallCommand
+	}
 )

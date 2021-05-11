@@ -1,4 +1,4 @@
-GeoAlchemy2<0.8.0
+geoalchemy2<0.7.0
 windpowerlib
 pvlib
 feedinlib

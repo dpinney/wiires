@@ -16,6 +16,6 @@ jobs:
       with:
         python-version: 3.8
     - name: Install
-      run: pip install git+https://github.com/dpinney/wiires
+      run: cd wiires; python setup.py install
     - name: Test
       run: python -c 'import wiires; wiires.tests'

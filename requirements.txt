@@ -1,9 +1,4 @@
-psycopg2
-geoalchemy2<0.7.0
-feedinlib
-windpowerlib
-pvlib
-pandas<0.26,>=0.18.0
+oemof
 OpenDSSDirect.py[extras]
 scipy
 fire

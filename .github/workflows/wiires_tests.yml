@@ -18,4 +18,4 @@ jobs:
     - name: Install
       run: python setup.py install
     - name: Test
-      run: python -c 'import wiires; wiires.tests'
+      run: python -c 'import wiires'

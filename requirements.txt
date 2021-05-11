@@ -1,3 +1,4 @@
+psycopg2
 geoalchemy2<0.7.0
 windpowerlib
 pvlib

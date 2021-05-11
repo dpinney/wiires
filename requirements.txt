@@ -3,11 +3,10 @@ geoalchemy2<0.7.0
 feedinlib
 windpowerlib
 pvlib
-pandas
+pandas<0.26,>=0.18.0
 OpenDSSDirect.py[extras]
 scipy
 fire
 plotly
 numpy
-xarray
 matplotlib

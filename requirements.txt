@@ -1,9 +1,7 @@
-pandas<0.26,>=0.18.0
-psycopg2
-geoalchemy2<0.7.0
-windpowerlib
+git+https://github.com/wind-python/windpowerlib
+git+https://github.com/oemof/feedinlib
+pandas
 pvlib
-feedinlib
 OpenDSSDirect.py[extras]
 scipy
 fire

@@ -36,11 +36,12 @@ wiires.graph_dss.graph_single_phase("./lehigh_Mon_load.634a_data_center.csv")
 # find the lowest cost energy mix using grid search for a year of hourly load shapes given a location and year
 # function accepts loads (csv or list), max solar, wind, and storage capacity in Watts, latitude, longitude, year, and step size for grid search
 # solar, wind, and grid electricity costs as well as demand charge are preset but can be changed in code
-LCEM = wiires.LCEM.optimal_mix("./all_loads_vertical.csv", 60_000, 60_000, 60_000, 39.952437, -75.16378, 2019, 5_000)
-print(LCEM)
+
+#opt_mix = wiires.LCEM.optimal_mix("./all_loads_vertical.csv", 60_000, 60_000, 60_000, 39.952437, -75.16378, 2019, 5_000)
+#print(opt_mix)
 
 # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
-df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./all_loads_vertical.csv", 10_000, 10_000, 55_000, 39.952437, -75.16378, 2019)
-print(df[0:20])
-print(total_cost)
-print(fossil_total)
+#df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./all_loads_vertical.csv", 10_000, 10_000, 55_000, 39.952437, -75.16378, 2019)
+#print(df[0:20])
+#print(total_cost)
+#print(fossil_total)

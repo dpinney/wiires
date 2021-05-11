@@ -8,8 +8,8 @@ from setuptools.command.install import install
 from subprocess import check_call
 
 def pre_install():
-    check_call("pip install git+https://github.com/wind-python/windpowerlib".split())
-    check_call("git+https://github.com/oemof/feedinlib".split())
+    check_call("pip install git+https://github.com/wind-python/windpowerlib.git".split())
+    check_call("git+https://github.com/oemof/feedinlib.git".split())
 
 class PreDevelopCommand(develop):
     def run(self):

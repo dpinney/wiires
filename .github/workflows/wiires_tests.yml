@@ -5,13 +5,17 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install
-        run: pip install git+https://github.com/dpinney/wiires
-      - name: Test
-        run: python -c 'import wiires; wiires.tests'
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install
+      run: pip install git+https://github.com/dpinney/wiires
+    - name: Test
+      run: python -c 'import wiires; wiires.tests'

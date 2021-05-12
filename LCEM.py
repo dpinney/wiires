@@ -98,6 +98,7 @@ def get_solar(weather_ds):
   solar_output_ds = solar_feedin_ac / solar_feedin_ac.max()
   return solar_output_ds
 
+
 def get_wind(weather_ds):
   bergey_turbine_data = {
       'nominal_power': 15600,  # in W

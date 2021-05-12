@@ -54,7 +54,7 @@ def get_weather(latitude, longitude, year):
   # fname6 = 'ERA5_weather_data_2019_35.4676_-97.5164.nc'
   # urllib.request.urlretrieve(cache_url6, fname6)
 
-  cache_dir = './'
+  cache_dir = './data/'
   cache_files = os.listdir(cache_dir)
   def get_climate(latitude, longitude, year):
       cache_name = f'ERA5_weather_data_{year}_{latitude}_{longitude}.nc'
@@ -335,7 +335,3 @@ def refined_LCEM(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_
 
 if __name__ == '__main__':
 	fire.Fire()
-
-
-# results = refined_LCEM('./all_loads_vertical.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
-# print(results) # [787.9182973867388, 410.0, 3480.0, 0.0, 9547724.910232382]

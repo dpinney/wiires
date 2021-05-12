@@ -66,7 +66,7 @@ set defaultbasefrequency=60 ...
 26211.31538862757
 
 >>> # a refined grid search gets the lowest cost energy mix down to the nearest Watt of capacity 
->>> ref_mix = refined_LCEM('./data/all_loads_vertical.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
+>>> ref_mix = refined_LCEM('./loads.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
 >>> ref_mix[0]
 [787.9182973867388, 410.0, 3480.0, 0.0, 9547724.910232382]
 ```

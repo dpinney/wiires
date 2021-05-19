@@ -16,6 +16,14 @@ import fire
 import csv
 
 
+solar_rate = 0.000_024 # $ per Watt
+wind_rate = 0.000_009 # $ per Watt
+batt_rate = 0.000_055 # $ per Watt
+grid_rate = 0.000_150 # $ per Watt
+demand_rate = 20 # typical demand rate in $ per kW
+demand_rate = demand_rate / 1000 # $ / Watt 
+
+
 def float_range(start, stop, step):
 	while start < stop:
 		yield float(start)
@@ -181,13 +189,12 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   )
 
   # set levelized energy costs in dollars per Watt hour 
-  solar_cost = sum(mix_df['solar']) * 0.000_024
-  wind_cost = sum(mix_df['wind']) * 0.000_009
-
+  solar_cost = sum(mix_df['solar']) * solar_rate
+  wind_cost = sum(mix_df['wind']) * wind_rate
   ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
   CYCLES = sum(ABS_DIFF) * 0.5
   # multiply by LCOS 
-  storage_cost = CYCLES * 0.000_055
+  storage_cost = CYCLES * batt_rate
 
   jan_demand = mix_df['fossil'][0:744]
   feb_demand = mix_df['fossil'][744:1416]
@@ -203,10 +210,7 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   dec_demand = mix_df['fossil'][8016:8760] 
   monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
 
-  energy_rate = 0.000_020 # $ per Watt
-  demand_rate = 20 # typical demand rate in $ per kW
-  demand_rate = demand_rate / 1000 # $/kW --> $/W
-  fossil_cost = [energy_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
+  fossil_cost = [grid_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
   fossil_cost = sum(fossil_cost)
 
   tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost
@@ -272,13 +276,12 @@ def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min,
         rendf['curtailment'] = [x if x<0 else 0.0 for x in rendf['demand_minus_renewables']]
 
         # set energy costs in dollars per Watt 
-        solar_cost = sum(rendf['solar']) * 0.000_024
-        wind_cost = sum(rendf['wind']) * 0.000_009
-
+        solar_cost = sum(rendf['solar']) * solar_rate
+        wind_cost = sum(rendf['wind']) * wind_rate
         ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
         CYCLES = sum(ABS_DIFF) * 0.5
         # multiply by LCOS 
-        storage_cost = CYCLES * 0.000_055
+        storage_cost = CYCLES * batt_rate
         
         jan_demand = rendf['fossil'][0:744]
         feb_demand = rendf['fossil'][744:1416]
@@ -294,10 +297,7 @@ def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min,
         dec_demand = rendf['fossil'][8016:8760] 
         monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
 
-        energy_rate = 0.000_150 # $ per Watt
-        demand_rate = 20 # typical demand rate in $ per kW
-        demand_rate = demand_rate / 1000
-        fossil_cost = [energy_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
+        fossil_cost = [grid_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
         fossil_cost = sum(fossil_cost)
         # fossil_cost = sum(rendf['fossil']) * 9e99
         
@@ -337,5 +337,5 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60000, 0, 60000, 0, 60000, 39.952437, -75.16378, 2019, 5000)
-# print(results)
+results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60000, 0, 60000, 0, 60000, 39.952437, -75.16378, 2019, 5000)
+print(results)

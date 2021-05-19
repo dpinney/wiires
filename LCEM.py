@@ -294,7 +294,7 @@ def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min,
         dec_demand = rendf['fossil'][8016:8760] 
         monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
 
-        energy_rate = 0.000_020 # $ per Watt
+        energy_rate = 0.000_150 # $ per Watt
         demand_rate = 20 # typical demand rate in $ per kW
         demand_rate = demand_rate / 1000
         fossil_cost = [energy_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
@@ -335,3 +335,7 @@ def refined_LCEM(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_
 
 if __name__ == '__main__':
 	fire.Fire()
+
+
+# results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60000, 0, 60000, 0, 60000, 39.952437, -75.16378, 2019, 5000)
+# print(results)

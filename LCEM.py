@@ -337,5 +337,5 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60000, 0, 60000, 0, 60000, 39.952437, -75.16378, 2019, 5000)
-print(results)
+# results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 5000)
+# print(results)

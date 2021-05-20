@@ -50,3 +50,9 @@ df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./all_loads_vert
 
 # a refined grid search gets the lowest cost energy mix down to the nearest Watt of capacity 
 ref_mix = wiires.LCEM.refined_LCEM('./all_loads_vertical.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
+
+# use SciPy optimization to find the lowest cost energy mix 
+weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
+solar_output_ds = LCEM.get_solar(weather_ds)
+wind_output_ds = LCEM.get_wind(weather_ds)
+results = OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)

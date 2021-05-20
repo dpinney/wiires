@@ -174,5 +174,5 @@ if __name__ == '__main__':
 weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
 solar_output_ds = LCEM.get_solar(weather_ds)
 wind_output_ds = LCEM.get_wind(weather_ds)
-results = OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+results = OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)
 print(results)

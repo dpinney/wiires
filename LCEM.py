@@ -62,7 +62,7 @@ def get_weather(latitude, longitude, year):
   # fname6 = 'ERA5_weather_data_2019_35.4676_-97.5164.nc'
   # urllib.request.urlretrieve(cache_url6, fname6)
 
-  cache_dir = './data/'
+  cache_dir = './'
   cache_files = os.listdir(cache_dir)
   def get_climate(latitude, longitude, year):
       cache_name = f'ERA5_weather_data_{year}_{latitude}_{longitude}.nc'

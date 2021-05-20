@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import opendssdirect as dss
 import fire
 
-dss.Basic.DataPath("./data/")
+# dss.Basic.DataPath("./data/")
 
 
 def run_dss_command(dss_cmd):

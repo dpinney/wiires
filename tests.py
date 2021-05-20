@@ -4,7 +4,7 @@
 import wiires
 
 # convert a dss file to an object for manipulation 
-tree = wiires.dss_manipulation.dss_to_tree('./lehigh.dss')
+tree = wiires.dss_manipulation.dss_to_tree("./lehigh.dss")
 
 # add 2 15.6 kW wind turbines to each load
 tree_turb = wiires.dss_manipulation.add_turbine(tree, 2, '15.6') 

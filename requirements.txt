@@ -1,6 +1,6 @@
 oemof
 OpenDSSDirect.py[extras]
-scipy
+scipy_optimize
 fire
 plotly
 numpy

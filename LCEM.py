@@ -62,7 +62,7 @@ def get_weather(latitude, longitude, year):
   # fname6 = 'ERA5_weather_data_2019_35.4676_-97.5164.nc'
   # urllib.request.urlretrieve(cache_url6, fname6)
 
-  cache_dir = './'
+  cache_dir = './data/'
   cache_files = os.listdir(cache_dir)
   def get_climate(latitude, longitude, year):
       cache_name = f'ERA5_weather_data_{year}_{latitude}_{longitude}.nc'
@@ -317,25 +317,24 @@ def optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_m
 
 
 def refined_LCEM(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, latitude, longitude, year, stepsize):
-	weather_ds = get_weather(latitude, longitude, year)
-	solar_output_ds = get_solar(weather_ds)
-	wind_output_ds = get_wind(weather_ds)
-	results = direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, solar_output_ds, wind_output_ds, stepsize)
-	y = stepsize 
-	while y > 10:
-		new_solar = results[0][1] # 10_000
-		new_wind = results[0][2]  # 10_000
-		new_batt = results[0][3]  # 55_000
-		new_smin = new_solar - y
-		new_smax = new_solar + y
-		results = direct_optimal_mix(load, new_smin, new_smax, new_wind - y, new_wind + y, new_batt - y, new_batt + y, solar_output_ds, wind_output_ds, y / 10)
-		y = y / 10
-	return results
+  weather_ds = get_weather(latitude, longitude, year)
+  solar_output_ds = get_solar(weather_ds)
+  wind_output_ds = get_wind(weather_ds)
+  results = direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, solar_output_ds, wind_output_ds, stepsize)
+  y = stepsize
+  while y > 100_000:
+    new_solar = results[0][1]
+    new_wind = results[0][2]
+    new_batt = results[0][3]
+    z = y * 0.9
+    results = direct_optimal_mix(load, new_solar - z, new_solar + z, new_wind - z, new_wind + z, new_batt - z, new_batt + z, solar_output_ds, wind_output_ds, y / 10)
+    y = y / 10
+  return results
 
 
 if __name__ == '__main__':
 	fire.Fire()
 
 
-# results = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 5000)
-# print(results)
+capacities = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 10_000_000)
+print(capacities)

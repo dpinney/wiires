@@ -82,6 +82,21 @@ def networkPlot(filePath, figsize=(20,20), output_name='networkPlot.png', show_l
 		volt_values[row['Bus']] = row[' pu1']
 		labels[row['Bus']] = row['Bus']
 	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
+
+
+	# find highest voltage, increase to 1.05, increase all voltages by same amount, output amount 
+	all_values = volt_values.values()
+	max_volt = max(all_values)
+	big_bus = max(volt_values, key=volt_values.get)
+	if max_volt < 1.05:
+		diff = 1.05 - max_volt
+		volt_values = {key: val + diff for key, val in volt_values.items()}
+		print("Reached hosting capacity at " + big_bus)
+		print(big_bus + " was " + str(max_volt) + ". It was " + str(diff) + " under 1.05")
+	else: 
+		print("Circuit is already at hosting capacity at " + big_bus)
+		print(big_bus + " is at " + str(max_volt))
+
 	# Start drawing.
 	plt.figure(figsize=figsize) 
 	nodes = nx.draw_networkx_nodes(G, pos, node_color=colorCode, node_size=node_size)
@@ -99,4 +114,4 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# networkPlot("mod_lehigh.dss")
+networkPlot("mod_lehigh.dss")

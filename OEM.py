@@ -16,7 +16,8 @@ demand_rate = 20 # typical demand rate in $ per kW
 demand_rate = demand_rate / 1000 # $ / Watt	
 
 
-def OEM(load, solar_max, wind_max, batt_max, solar_output_ds, wind_output_ds, stepsize):
+# def OEM(load, solar_max, wind_max, batt_max, solar_output_ds, wind_output_ds, stepsize):
+def OEM(load, solar_output_ds, wind_output_ds):
 	solar_output_ds.reset_index(drop=True, inplace=True)
 	wind_output_ds.reset_index(drop=True, inplace=True)
 
@@ -83,15 +84,16 @@ def OEM(load, solar_max, wind_max, batt_max, solar_output_ds, wind_output_ds, st
 		fossil_cost = sum(fossil_cost)
 		# fossil_cost = sum(rendf['fossil']) * 9e99
 		
-		tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
-		return tot_cost
+		return wind_cost + solar_cost + storage_cost + fossil_cost 
 
 	# call optimization function 
-	initial_guesses = LCEM.direct_optimal_mix(load, 0, solar_max, 0, wind_max, 0, batt_max, solar_output_ds, wind_output_ds, stepsize)
-	x0 = [initial_guesses[0][1], initial_guesses[0][2], initial_guesses[0][3]]
-	print(x0)
-	# x0 = [1, 1, 1]
-	solution = minimize(objective,x0,method='SLSQP')
+	# initial_guesses = LCEM.direct_optimal_mix(load, 0, solar_max, 0, wind_max, 0, batt_max, solar_output_ds, wind_output_ds, stepsize)
+	# x0 = [initial_guesses[0][1], initial_guesses[0][2], initial_guesses[0][3]]
+	x0 = [1, 1, 1]
+	bounds = [(0, np.inf), (0, np.inf), (0, np.inf)]
+	solution = minimize(objective,x0,method='Nelder-Mead',bounds=bounds)
+	print('here is the solution')
+	print(solution)
 
 	# redefine variables for plotting 
 	merged_frame = pd.DataFrame({
@@ -178,8 +180,7 @@ if __name__ == '__main__':
 weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
 solar_output_ds = LCEM.get_solar(weather_ds)
 wind_output_ds = LCEM.get_wind(weather_ds)
-results = OEM("./data/all_loads_vertical.csv", 60_000_000, 60_000_000, 60_000_000, solar_output_ds, wind_output_ds, 5_000_000)
+# results = OEM("./data/all_loads_vertical.csv", 60_000_000, 60_000_000, 60_000_000, solar_output_ds, wind_output_ds, 5_000_000)
+results = OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+print('here are the results')
 print(results)
-''' [10000000.0, 10000000.0, 55000000.0]
-[795242.1132307248, 9982349.44143007, 9995031.81609683, 55000000.01653451, 26660625.360756718]
-[Finished in 4106.9s] '''

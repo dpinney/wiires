@@ -49,7 +49,7 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def networkPlot(filePath, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
+def get_hosting_cap(filePath, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
 	''' Plot the physical topology of the circuit. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(filePath))
 	coords = runDSS(filePath)
@@ -114,4 +114,4 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-networkPlot("mod_lehigh.dss")
+# get_hosting_cap("mod_lehigh.dss")

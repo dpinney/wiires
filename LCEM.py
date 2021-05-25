@@ -336,5 +336,5 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-capacities = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 10_000_000)
-print(capacities)
+# capacities = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 10_000_000)
+# print(capacities)

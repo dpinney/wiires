@@ -42,7 +42,7 @@ set defaultbasefrequency=60 ...
 ![single_phase](https://user-images.githubusercontent.com/65563537/117373222-d367f680-ae98-11eb-911e-ce58068be35b.png)
 ```
 >>> # get a year of weather data for any set of coordinates starting at 1950. Hourly data starts at 1970
->>> weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
+>>> weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
 >>> weather_ds
 <xarray.Dataset>
 Dimensions:    (latitude: 1, longitude: 1, time: 8760)
@@ -65,7 +65,7 @@ Attributes:
     history:      2021-02-05 19:58:43 GMT by grib_to_netcdf-2.16.0: /opt/ecmw...
 
 >>> # get one year of solar output in hourly Watts 
->>> solar_output_ds = LCEM.get_solar(weather_ds)
+>>> solar_output_ds = wiires.LCEM.get_solar(weather_ds)
 >>> solar_output_ds
 time
 2018-12-31 23:30:00+00:00   -0.000342
@@ -82,7 +82,7 @@ time
 Length: 8760, dtype: float64
 
 >>> # get one year of wind output in hourly Watts 
->>> wind_output_ds = LCEM.get_wind(weather_ds)
+>>> wind_output_ds = wiires.LCEM.get_wind(weather_ds)
 >>> wind_output_ds
 time
 2018-12-31 23:00:00+00:00    0.196656
@@ -123,16 +123,24 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 26211.31538862757
 
 >>> # a refined grid search gets the lowest cost energy mix down to the nearest Watt of capacity 
->>> ref_mix = refined_LCEM('./loads.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
+>>> ref_mix = wiires.LCEM.refined_LCEM('./loads.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
 >>> ref_mix[0]
 [787.9182973867388, 410.0, 3480.0, 0.0, 9547724.910232382]
 
 >>> # use SciPy optimization to find the lowest cost energy mix
 >>> # outputs total cost in dollars, solar, wind, and storage capacity in Watts, and grid electricity use in Wh
->>> weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
->>> solar_output_ds = LCEM.get_solar(weather_ds)
->>> wind_output_ds = LCEM.get_wind(weather_ds)
->>> results = OEM("./loads.csv", solar_output_ds, wind_output_ds)
+>>> weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
+>>> solar_output_ds = wiires.LCEM.get_solar(weather_ds)
+>>> wind_output_ds = wiires.LCEM.get_wind(weather_ds)
+>>> results = wiires.OEM("./loads.csv", solar_output_ds, wind_output_ds)
 >>> results
 [1617936.434096718, 3853494.8130528317, 6297853.202623451, 2888808.172369332, 5566520009.556752]
+
+>>> # use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
+>>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage
+>>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined in red
+>>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.
+>>> wiires.hosting_cap.get_hosting_cap("lehigh.dss", 100, 200)
+Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distributed generation per load.
+Node 611 reached hosting capacity at 1.0504
 ```

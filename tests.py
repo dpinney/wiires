@@ -52,7 +52,14 @@ df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./all_loads_vert
 ref_mix = wiires.LCEM.refined_LCEM('./all_loads_vertical.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
 
 # use SciPy optimization to find the lowest cost energy mix 
-weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
-solar_output_ds = LCEM.get_solar(weather_ds)
-wind_output_ds = LCEM.get_wind(weather_ds)
-results = OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
+solar_output_ds = wiires.LCEM.get_solar(weather_ds)
+wind_output_ds = wiires.LCEM.get_wind(weather_ds)
+results = wiires.OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+
+# use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
+# hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage
+# hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined in red
+# get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.
+
+wiires.hosting_cap.get_hosting_cap("lehigh.dss", 170, 200)

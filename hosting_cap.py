@@ -5,6 +5,7 @@ import fire
 import pandas as pd
 import opendssdirect as dss
 import math
+import dss_manipulation
 
 
 dss.Basic.DataPath("./data/")
@@ -49,10 +50,10 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def get_hosting_cap(filePath, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
+def network_plot(file_path, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
 	''' Plot the physical topology of the circuit. '''
-	dssFileLoc = os.path.dirname(os.path.abspath(filePath))
-	coords = runDSS(filePath)
+	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
+	coords = runDSS(file_path)
 	runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
 	volts = pd.read_csv(dssFileLoc + '/volts.csv')
 	coords.columns = ['Bus', 'X', 'Y', 'radius']
@@ -81,25 +82,22 @@ def get_hosting_cap(filePath, figsize=(20,20), output_name='networkPlot.png', sh
 	for index, row in volts.iterrows():
 		volt_values[row['Bus']] = row[' pu1']
 		labels[row['Bus']] = row['Bus']
-	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
-
-
-	# find highest voltage, increase to 1.05, increase all voltages by same amount, output amount 
 	all_values = volt_values.values()
 	max_volt = max(all_values)
 	big_bus = max(volt_values, key=volt_values.get)
-	if max_volt < 1.05:
-		diff = 1.05 - max_volt
-		volt_values = {key: val + diff for key, val in volt_values.items()}
-		print("Reached hosting capacity at " + big_bus)
-		print(big_bus + " was " + str(max_volt) + ". It was " + str(diff) + " under 1.05")
-	else: 
-		print("Circuit is already at hosting capacity at " + big_bus)
-		print(big_bus + " is at " + str(max_volt))
+	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
+
+	# set edge color to red if node hit hosting capacity 
+	edge_colors = []
+	for node in G.nodes():
+		if volt_values.get(node, 0.0) >= 1.05:
+			edge_colors.append("red")
+		else:
+			edge_colors.append("black")
 
 	# Start drawing.
 	plt.figure(figsize=figsize) 
-	nodes = nx.draw_networkx_nodes(G, pos, node_color=colorCode, node_size=node_size)
+	nodes = nx.draw_networkx_nodes(G, pos, node_color=colorCode, node_size=node_size, edgecolors=edge_colors)
 	edges = nx.draw_networkx_edges(G, pos)
 	if show_labels:
 		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
@@ -110,8 +108,37 @@ def get_hosting_cap(filePath, figsize=(20,20), output_name='networkPlot.png', sh
 	plt.clf
 
 
+def get_hosting_cap(file_path, turb_min, turb_max):
+	tree = dss_manipulation.dss_to_tree(file_path)
+	# adds generation at each load 15.6 kW at a time
+	i  = None
+	for i in range(turb_min, turb_max):
+		dg_tree = dss_manipulation.add_turbine(tree, i, 15.6)
+		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+		dssFileLoc = os.path.dirname(os.path.abspath('cap_circuit.dss'))
+		coords = runDSS('cap_circuit.dss')
+		runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
+		volts = pd.read_csv(dssFileLoc + '/volts.csv')
+		volt_values = {}
+		for index, row in volts.iterrows():
+			volt_values[row['Bus']] = row[' pu1']
+		# sort the values and break if the largest surpasses 1.05
+		max_volt = max(volt_values.values())
+		if max_volt >= 1.05:
+			big_load = max(volt_values, key=volt_values.get)
+			print("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load.")
+			print("Node " + big_load + " reached hosting capacity at " + str(max_volt))
+			network_plot("cap_circuit.dss")
+			break
+	else:
+		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
+
+
 if __name__ == '__main__':
 	fire.Fire()
 
 
-# get_hosting_cap("mod_lehigh.dss")
+get_hosting_cap("lehigh.dss", 170, 180)
+# Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6kW of distributed generation per load.
+# Node 611 reached hosting capacity at 1.0504
+# [Finished in 61.4s]

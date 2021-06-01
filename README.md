@@ -132,7 +132,7 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 >>> weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
 >>> solar_output_ds = wiires.LCEM.get_solar(weather_ds)
 >>> wind_output_ds = wiires.LCEM.get_wind(weather_ds)
->>> results = wiires.OEM("./loads.csv", solar_output_ds, wind_output_ds)
+>>> results = wiires.OEM.get_OEM("./loads.csv", solar_output_ds, wind_output_ds)
 >>> results
 [1617936.434096718, 3853494.8130528317, 6297853.202623451, 2888808.172369332, 5566520009.556752]
 
@@ -144,3 +144,4 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distributed generation per load.
 Node 611 reached hosting capacity at 1.0504
 ```
+![networkPlot](https://user-images.githubusercontent.com/65563537/120389152-09fb2a80-c2fa-11eb-837f-06e2a7ac2435.png)

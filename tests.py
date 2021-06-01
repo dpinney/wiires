@@ -55,7 +55,7 @@ ref_mix = wiires.LCEM.refined_LCEM('./all_loads_vertical.csv', 0, 60_000, 0, 60_
 weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
 solar_output_ds = wiires.LCEM.get_solar(weather_ds)
 wind_output_ds = wiires.LCEM.get_wind(weather_ds)
-results = wiires.OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+results = wiires.OEM.get_OEM("./all_loads_vertical.csv", solar_output_ds, wind_output_ds)
 
 # use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
 # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage

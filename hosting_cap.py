@@ -138,7 +138,7 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-get_hosting_cap("lehigh.dss", 170, 180)
+# get_hosting_cap("lehigh.dss", 170, 180)
 # Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6kW of distributed generation per load.
 # Node 611 reached hosting capacity at 1.0504
 # [Finished in 61.4s]

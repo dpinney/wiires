@@ -7,10 +7,10 @@ import fire
 import LCEM
 
 
-solar_rate = 0.000_024 # $ per Watt
-wind_rate = 0.000_009 # $ per Watt
-batt_rate = 0.000_055 # $ per Watt
-grid_rate = 0.000_070 # $ per Watt
+solar_rate = 0.000_032 # $ per Watt
+wind_rate = 0.000_043 # $ per Watt
+batt_rate = 0.000_087 # $ per Watt
+grid_rate = 0.000_150 # $ per Watt
 # grid_rate = 9e99 
 demand_rate = 20 # typical demand rate in $ per kW
 demand_rate = demand_rate / 1000 # $ / Watt	
@@ -176,9 +176,9 @@ def get_OEM(load, solar_output_ds, wind_output_ds):
 if __name__ == '__main__':
 	fire.Fire()
 
-weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
-solar_output_ds = LCEM.get_solar(weather_ds)
-wind_output_ds = LCEM.get_wind(weather_ds)
+# weather_ds = LCEM.get_weather(39.952437, -75.16378, 2019)
+# solar_output_ds = LCEM.get_solar(weather_ds)
+# wind_output_ds = LCEM.get_wind(weather_ds)
 # results = get_OEM("./data/all_loads_vertical.csv", 60_000_000, 60_000_000, 60_000_000, solar_output_ds, wind_output_ds, 5_000_000)
 # item_1 = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds, 0.000_024, 0.000_009, 0.000_055, 0.000_020, 60_000_000, 60_000_000, 60_000_000, 5_000_000)
 # item_2 = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds, 0.000_024, 0.000_009, 0.000_055, 0.000_060, 60_000_000, 60_000_000, 60_000_000, 5_000_000)
@@ -189,5 +189,5 @@ wind_output_ds = LCEM.get_wind(weather_ds)
 # item_7 = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds, 0.000_032, 0.000_043, 0.000_087, 0.000_070, 60_000_000, 60_000_000, 60_000_000, 5_000_000)
 # item_8 = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds, 0.000_032, 0.000_043, 0.000_087, 0.000_150, 60_000_000, 60_000_000, 60_000_000, 5_000_000)
 # print(item_1, item_2, item_3, item_4, item_5, item_6, item_7, item_8)
-results = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds)
-print(results)
+# results = get_OEM("./data/all_loads_vertical.csv", solar_output_ds, wind_output_ds)
+# print(results)

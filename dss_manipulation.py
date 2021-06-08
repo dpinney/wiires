@@ -8,6 +8,7 @@ Includes function to remove duplicate elements from an OpenDSS tree.
 import opendssdirect as dss
 import fire
 import copy
+import numpy as np
 
 def dss_to_tree(path_to_dss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
@@ -170,3 +171,37 @@ def remove_dups(dss_tree):
 	        seen.add(tup)
 	        new_l.append(d)
 	return new_l
+
+
+def host_cap_snapshot_arrange(dss_tree):
+  tree_copy = copy.deepcopy(dss_tree)
+  # all loadshape names 
+  loadshapes = [y.get('object') for y in tree_copy if y.get('object','').startswith('loadshape.')]
+  # list of loadshape names that are only for loads
+  load_loadshape_names = ['loadshape.' + y.get('daily') for y in tree_copy if y.get('object','').startswith('load.')]
+  # list of loadshape names that aren't for loads
+  gen_loadshape_names = np.setdiff1d(loadshapes,load_loadshape_names)
+
+  # replace first value of all load loadshapes with the minimum of those loadshapes  
+  for i in load_loadshape_names:
+    for x in tree_copy:
+      if x.get('object','').startswith(i):
+        mults_string = x.get('mult') 
+        mults = [float(i) for i in mults_string[1:-1].split(',')]
+        low_load = min(mults)
+        mults[0] = low_load
+        new_mults_string = str(mults)
+        new_mults_string = new_mults_string.replace(" ","")
+        x.update({'mult' : new_mults_string})
+  # replace first value of all generation loadshapes with the maximum of those loadshapes 
+  for i in gen_loadshape_names:
+    for x in tree_copy:
+      if x.get('object','').startswith(i):
+        mults_string = x.get('mult') 
+        mults = [float(i) for i in mults_string[1:-1].split(',')]
+        high_gen = max(mults)
+        mults[0] = high_gen
+        new_mults_string = str(mults)
+        new_mults_string = new_mults_string.replace(" ","")
+        x.update({'mult' : new_mults_string})
+  return tree_copy

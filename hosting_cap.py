@@ -50,7 +50,7 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def network_plot(file_path, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
+def network_plot(file_path, i, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
 	''' Plot the physical topology of the circuit. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
 	coords = runDSS(file_path)
@@ -102,7 +102,8 @@ def network_plot(file_path, figsize=(20,20), output_name='networkPlot.png', show
 	if show_labels:
 		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
 	plt.colorbar(nodes)
-	plt.title('Network Voltage Layout')
+	# plt.title('Network Voltage Layout')
+	plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at " + str(max_volt))
 	plt.tight_layout()
 	plt.savefig(dssFileLoc + '/' + output_name)
 	plt.clf
@@ -110,6 +111,8 @@ def network_plot(file_path, figsize=(20,20), output_name='networkPlot.png', show
 
 def get_hosting_cap(file_path, turb_min, turb_max):
 	tree = dss_manipulation.dss_to_tree(file_path)
+	tree = dss_manipulation.host_cap_snapshot_arrange(tree)
+	
 	# adds generation at each load 15.6 kW at a time
 	i  = None
 	for i in range(turb_min, turb_max):
@@ -125,10 +128,7 @@ def get_hosting_cap(file_path, turb_min, turb_max):
 		# sort the values and break if the largest surpasses 1.05
 		max_volt = max(volt_values.values())
 		if max_volt >= 1.05:
-			big_load = max(volt_values, key=volt_values.get)
-			print("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load.")
-			print("Node " + big_load + " reached hosting capacity at " + str(max_volt))
-			network_plot("cap_circuit.dss")
+			network_plot("cap_circuit.dss", i)
 			break
 	else:
 		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
@@ -138,7 +138,4 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# get_hosting_cap("lehigh.dss", 170, 180)
-# Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6kW of distributed generation per load.
-# Node 611 reached hosting capacity at 1.0504
-# [Finished in 61.4s]
+# get_hosting_cap("lehigh.dss", 130, 180)

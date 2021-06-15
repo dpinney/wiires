@@ -4,7 +4,6 @@ import pvlib
 from windpowerlib import WindTurbine
 import urllib
 from feedinlib import WindPowerPlant, Photovoltaic, get_power_plant_data, era5
-import glob
 import xarray
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,7 +12,8 @@ import opendssdirect as dss
 import numpy as np
 import warnings
 import fire
-import csv
+import itertools
+import multiprocessing
 
 
 solar_rate = 0.000_024 # $ per Watt
@@ -254,8 +254,8 @@ def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min,
             })
         merged_frame = merged_frame.fillna(0) # replaces N/A or NaN values with 0s
         merged_frame[merged_frame < 0] = 0 # no negative generation or load
-        merged_frame['wind'] = wind * merged_frame['wind']
         merged_frame['solar'] = solar * merged_frame['solar']
+        merged_frame['wind'] = wind * merged_frame['wind']
         merged_frame['demand_minus_renewables'] = merged_frame['demand'] - (merged_frame['solar'] + merged_frame['wind'])
 
         rendf = pd.DataFrame(merged_frame).reset_index()
@@ -336,5 +336,102 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# capacities = refined_LCEM("./data/all_loads_vertical.csv", 0, 60_000_000, 0, 60_000_000, 0, 60_000_000, 39.952437, -75.16378, 2019, 10_000_000)
-# print(capacities)
+
+
+'''
+load = "./data/all_loads_vertical.csv"
+weather_ds = get_weather(39.952437, -75.16378, 2019)
+solar_output_ds = get_solar(weather_ds)
+wind_output_ds = get_wind(weather_ds)
+results = []
+solar_output_ds.reset_index(drop=True, inplace=True)
+wind_output_ds.reset_index(drop=True, inplace=True)
+
+# note: .csv must contain one column of 8760 values 
+if isinstance(load, str) == True:
+  if load.endswith('.csv'):
+    demand = pd.read_csv(load, delimiter = ',', squeeze = True)
+else:
+  demand = pd.Series(load) 
+
+solar_min = 0
+solar_max = 60_000_000
+wind_min = 0 
+wind_max = 60_000_000
+batt_min = 0
+batt_max = 60_000_000
+stepsize = 5_000
+
+solar_iter = range(solar_min, solar_max, stepsize)
+wind_iter = range(wind_min, wind_max, stepsize)
+batt_iter = range(batt_min, batt_max, stepsize)
+param_list = list(itertools.product(solar_iter,wind_iter,batt_iter))
+
+def iterator(params):
+  solar = params[0]
+  wind = params[1]
+  batt = params[2]
+  merged_frame = pd.DataFrame({
+      'solar':solar_output_ds,
+      'wind':wind_output_ds,
+      'demand':demand
+      })
+  merged_frame = merged_frame.fillna(0) # replaces N/A or NaN values with 0s
+  merged_frame[merged_frame < 0] = 0 # no negative generation or load
+  merged_frame['solar'] = solar * merged_frame['solar']
+  merged_frame['wind'] = wind * merged_frame['wind']
+  merged_frame['demand_minus_renewables'] = merged_frame['demand'] - (merged_frame['solar'] + merged_frame['wind'])
+
+  rendf = pd.DataFrame(merged_frame).reset_index()
+  STORAGE_DIFF = []
+  for i in rendf.index:
+    prev_charge = batt if i == rendf.index[0] else rendf.at[i-1, 'charge'] # can set starting charge here 
+    net_renewables = rendf.at[i, 'demand_minus_renewables'] # use the existing renewable resources  
+    new_net_renewables = net_renewables - prev_charge # if positive: fossil fuel. if negative: charge battery until maximum. 
+    if new_net_renewables < 0: 
+      charge = min(-1 * new_net_renewables, batt) # charges battery by the amount new_net_renewables is negative until hits max 
+      rendf.at[i, 'demand_minus_renewables'] = new_net_renewables + charge # cancels out unless hits storage limit. then curtailment 
+    else:
+      charge = 0.0 # we drained the battery 
+      rendf.at[i, 'demand_minus_renewables'] = new_net_renewables # the amount of fossil we'll need 
+    rendf.at[i, 'charge'] = charge 
+    STORAGE_DIFF.append(batt if i == rendf.index[0] else rendf.at[i, 'charge'] - rendf.at[i-1, 'charge'])
+  rendf['fossil'] = [x if x>0 else 0.0 for x in rendf['demand_minus_renewables']]
+  rendf['curtailment'] = [x if x<0 else 0.0 for x in rendf['demand_minus_renewables']]
+
+  # set energy costs in dollars per Watt 
+  solar_cost = sum(rendf['solar']) * solar_rate
+  wind_cost = sum(rendf['wind']) * wind_rate
+  ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
+  CYCLES = sum(ABS_DIFF) * 0.5
+  # multiply by LCOS 
+  storage_cost = CYCLES * batt_rate
+  
+  jan_demand = rendf['fossil'][0:744]
+  feb_demand = rendf['fossil'][744:1416]
+  mar_demand = rendf['fossil'][1416:2160]
+  apr_demand = rendf['fossil'][2160:2880]
+  may_demand = rendf['fossil'][2880:3624]
+  jun_demand = rendf['fossil'][3624:4344]
+  jul_demand = rendf['fossil'][4344:5088]
+  aug_demand = rendf['fossil'][5088:5832]
+  sep_demand = rendf['fossil'][5832:6552]
+  oct_demand = rendf['fossil'][6552:7296]
+  nov_demand = rendf['fossil'][7296:8016]
+  dec_demand = rendf['fossil'][8016:8760] 
+  monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]
+
+  fossil_cost = [grid_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
+  fossil_cost = sum(fossil_cost)
+  # fossil_cost = sum(rendf['fossil']) * 9e99
+  
+  tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
+
+  results.append([tot_cost,solar,wind,batt,sum(rendf['fossil'])])
+pool = multiprocessing.Pool()
+res = pool.map(iterator,param_list)
+results.sort(key=lambda x:x[0])
+print(results[0:10])
+print('also we have a variable named res')
+print(res)
+'''

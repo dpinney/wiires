@@ -81,3 +81,6 @@ def graph_single_phase(csv_path):
 
 if __name__ == '__main__':
 	fire.Fire()
+
+
+# run_dss('data/lehigh.dss')

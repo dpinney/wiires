@@ -117,20 +117,21 @@ def tree_to_dss(tree_object, output_path):
   out_file.close()
 
 
-def add_turbine(dss_tree, turb_count, kva):
+def add_turbine(dss_tree, turb_count, kw):
   tree_copy = copy.deepcopy(dss_tree)
   # get names of all buses
-  buses = [x.get('bus') for x in tree_copy if x.get('!CMD','').startswith('setbusxy')]
-  # add a wind turbine at each bus immediately before solve statement 
-  for i in buses:
+  load_buses = [y.get('bus1') for y in tree_copy if y.get('object','').startswith('load.')]
+  # get only the buses that have at least one load  
+  load_buses = list(dict.fromkeys(load_buses))
+  # add a wind turbine at each load bus immediately before solve statement 
+  for i in load_buses:
     for s in range(turb_count):
-      tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('object','').startswith('monitor.')][0]), {'!CMD': 'new',
+      tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
 	    'object': f'generator.wind_{i}_{s}',
 	    'bus': f'{i}.1.2.3',
-	    'kva': kva,
+	    'kw': kw,
 	    'pf': '1.0',
 	    'conn': 'delta',
-	    'duty': 'wind',
 	    'model': '1'})
   return tree_copy
 
@@ -205,3 +206,9 @@ def host_cap_snapshot_arrange(dss_tree):
         new_mults_string = new_mults_string.replace(" ","")
         x.update({'mult' : new_mults_string})
   return tree_copy
+
+
+# tree = dss_to_tree("data/wto_buses_xy.dss")
+# import pprint as pp
+# pp.pprint(tree)
+# tree_to_dss(tree, "data/test_circuit.dss")

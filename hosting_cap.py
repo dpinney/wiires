@@ -51,7 +51,7 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def network_plot(file_path, i, figsize=(20,20), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=8):
+def network_plot(file_path, i, figsize=(50,50), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=10):
 	''' Plot the physical topology of the circuit. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
 	coords = runDSS(file_path)
@@ -138,9 +138,9 @@ def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
 				network_plot("cap_circuit.dss", i)
 				break
 		if snapshot_or_timeseries == 'timeseries':
-			averages = newQstsPlot('cap_circuit.dss', 60, 8760, keepAllFiles=True)
-			print(i, averages)
-			if all(i < 1.05 for i in averages) == False:
+			maximums = newQstsPlot('cap_circuit.dss', 60, 8760)
+			print(i, maximums)
+			if all(i < 1.05 for i in maximums) == False:
 				network_plot("cap_circuit.dss", i)
 				break
 	else:
@@ -159,33 +159,33 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 	base_kvs = pd.DataFrame()
 	for ob in tree:
 		obData = ob.get('object','NONE.NONE')
-		obType, name = obData.split('.')
+		obType, name = obData.split('.', 1)
 		mon_name = f'mon{obType}-{name}'
 		if obData.startswith('circuit.'):
 			circ_name = name
-		elif obData.startswith('vsource.'):
-			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
-			mon_names.append(mon_name)
-		elif obData.startswith('isource.'):
-			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
-			mon_names.append(mon_name)
-		elif obData.startswith('generator.') or obData.startswith('isource.') or obData.startswith('storage.'):
-			mon_name = f'mongenerator-{name}'
-			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=1 ppolar=no')
-			mon_names.append(mon_name)
+		# elif obData.startswith('vsource.'):
+		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
+		# 	mon_names.append(mon_name)
+		# elif obData.startswith('isource.'):
+		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
+		# 	mon_names.append(mon_name)
+		# elif obData.startswith('generator.') or obData.startswith('isource.') or obData.startswith('storage.'):
+		# 	mon_name = f'mongenerator-{name}'
+		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=1 ppolar=no')
+		# 	mon_names.append(mon_name)
 		elif ob.get('object','').startswith('load.'):
 			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
 			mon_names.append(mon_name)
 			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':['monload-' + name]})
 			base_kvs = base_kvs.append(new_kv)
-		elif ob.get('object','').startswith('capacitor.'):
-			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=6')
-			mon_names.append(mon_name)
-		elif ob.get('object','').startswith('regcontrol.'):
-			tformer = ob.get('transformer','NONE')
-			winding = ob.get('winding',1)
-			runDssCommand(f'new object=monitor.{mon_name} element=transformer.{tformer} terminal={winding} mode=2')
-			mon_names.append(mon_name)
+		# elif ob.get('object','').startswith('capacitor.'):
+		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=6')
+		# 	mon_names.append(mon_name)
+		# elif ob.get('object','').startswith('regcontrol.'):
+		# 	tformer = ob.get('transformer','NONE')
+		# 	winding = ob.get('winding',1)
+		# 	runDssCommand(f'new object=monitor.{mon_name} element=transformer.{tformer} terminal={winding} mode=2')
+		# 	mon_names.append(mon_name)
 	# Run DSS
 	runDssCommand(f'set mode=yearly stepsize={stepSizeInMinutes}m ')
 	if actions == {}:
@@ -216,7 +216,6 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 			# reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
 			# three phase print out should work fine as is
 			ob_name = name.split('-')[1]
-			# print("ob_name:", ob_name)
 			the_object = _getByName(tree, ob_name)
 			# print("the_object:", the_object)
 			# create phase list, removing neutral phases
@@ -300,7 +299,27 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		all_load_df['V2(PU)'] = all_load_df['V2'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
 		all_load_df['V3(PU)'] = all_load_df['V3'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
 		all_load_df.to_csv(f'{dssFileLoc}/{filePrefix}_load.csv', index=False)
-		return all_load_df[['V1(PU)','V2(PU)','V3(PU)']].mean()
+		PU1 = all_load_df['V1(PU)']
+		PU2 = all_load_df['V2(PU)']
+		PU3 = all_load_df['V3(PU)']
+		maximums = all_load_df[['V1(PU)','V2(PU)','V3(PU)']].max()
+		max_v1 = all_load_df['V1(PU)'].max()
+		index1 = PU1[PU1 == maximums[0]].index[0]
+		hour1 = all_load_df.loc[index1, 'hour']
+		
+		max_v2 = all_load_df['V2(PU)'].max()
+		index2 = PU2[PU2 == maximums[1]].index[0]
+		hour2 = all_load_df.loc[index2, 'hour']
+
+		max_v3 = all_load_df['V3(PU)'].max()
+		index3 = PU3[PU3 == maximums[2]].index[0]
+		hour3 = all_load_df.loc[index3, 'hour']
+
+		hours = hour1, hour2, hour3
+
+		maximums_list = maximums.tolist()
+		return maximums_list, hours[maximums_list.index(max(maximums_list))]
+
 
 
 def _getByName(tree, name):
@@ -317,6 +336,6 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# get_hosting_cap("lehigh.dss", 180, 190, 'snapshot')
-get_hosting_cap("wto_buses_xy.dss", 0, 10, 'snapshot')
-# newQstsPlot('lehigh.dss', 60, 8760, keepAllFiles=True)
+# get_hosting_cap("lehigh.dss", 160, 190, 'timeseries')
+# get_hosting_cap("wto_buses_xy.dss", 0, 10, 'snapshot')
+newQstsPlot('lehigh.dss', 60, 8760)

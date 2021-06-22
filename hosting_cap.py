@@ -51,7 +51,7 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def network_plot(file_path, i, figsize=(50,50), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=10):
+def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=10):
 	''' Plot the physical topology of the circuit. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
 	coords = runDSS(file_path)
@@ -104,7 +104,10 @@ def network_plot(file_path, i, figsize=(50,50), output_name='networkPlot.png', s
 		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
 	plt.colorbar(nodes)
 	# plt.title('Network Voltage Layout')
-	plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at " + str(max_volt))
+	if hour != None:
+		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour) + ".")
+	else:
+		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
 	plt.tight_layout()
 	plt.savefig(dssFileLoc + '/' + output_name)
 	plt.clf
@@ -112,11 +115,13 @@ def network_plot(file_path, i, figsize=(50,50), output_name='networkPlot.png', s
 
 def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
 	tree = dss_manipulation.dss_to_tree(file_path)
-	loads = [y.get('object') for y in tree if y.get('object','').startswith('load.')]
-	for y in tree:
-		if y.get('object','').startswith('load.') and 'daily' in y.keys():
-			tree = dss_manipulation.host_cap_snapshot_arrange(tree)
-			break
+	# loads = [y.get('object') for y in tree if y.get('object','').startswith('load.')]
+	# arrange max load loadshapes and minimum generation loadshapes at front 
+	if snapshot_or_timeseries == 'snapshot':	
+		for y in tree:
+			if y.get('object','').startswith('load.') and 'daily' in y.keys():
+				tree = dss_manipulation.host_cap_dss_arrange(tree, None)
+				break
 
 	# adds generation at each load 15.6 kW at a time
 	i  = None
@@ -135,13 +140,17 @@ def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
 			max_volt = max(volt_values.values())
 			print(i, max_volt)
 			if max_volt >= 1.05:
-				network_plot("cap_circuit.dss", i)
+				network_plot("cap_circuit.dss", i, None)
 				break
 		if snapshot_or_timeseries == 'timeseries':
-			maximums = newQstsPlot('cap_circuit.dss', 60, 8760)
-			print(i, maximums)
-			if all(i < 1.05 for i in maximums) == False:
-				network_plot("cap_circuit.dss", i)
+			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+			print(i, maximums, hour)
+			if any(j >= 1.05 for j in maximums):
+				# put loadshapes from "hour" hour first in cap_circuit.dss
+				timeseries_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
+				timeseries_tree = dss_manipulation.host_cap_dss_arrange(timeseries_tree, hour)
+				dss_manipulation.tree_to_dss(timeseries_tree, 'cap_circuit.dss')
+				network_plot("cap_circuit.dss", i, hour)
 				break
 	else:
 		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
@@ -318,6 +327,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		hours = hour1, hour2, hour3
 
 		maximums_list = maximums.tolist()
+		print(maximums_list, hours[maximums_list.index(max(maximums_list))])
 		return maximums_list, hours[maximums_list.index(max(maximums_list))]
 
 
@@ -336,6 +346,7 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# get_hosting_cap("lehigh.dss", 160, 190, 'timeseries')
+get_hosting_cap("lehigh.dss", 175, 190, 'timeseries')
 # get_hosting_cap("wto_buses_xy.dss", 0, 10, 'snapshot')
-newQstsPlot('lehigh.dss', 60, 8760)
+# newQstsPlot('lehigh.dss', 60, 8760)
+# network_plot("cap_circuit.dss", 4, 4)

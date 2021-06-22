@@ -174,7 +174,7 @@ def remove_dups(dss_tree):
 	return new_l
 
 
-def host_cap_snapshot_arrange(dss_tree):
+def host_cap_dss_arrange(dss_tree, hour):
   tree_copy = copy.deepcopy(dss_tree)
   # all loadshape names 
   loadshapes = [y.get('object') for y in tree_copy if y.get('object','').startswith('loadshape.')]
@@ -183,28 +183,41 @@ def host_cap_snapshot_arrange(dss_tree):
   # list of loadshape names that aren't for loads
   gen_loadshape_names = np.setdiff1d(loadshapes,load_loadshape_names)
 
-  # replace first value of all load loadshapes with the minimum of those loadshapes  
-  for i in load_loadshape_names:
-    for x in tree_copy:
-      if x.get('object','').startswith(i):
-        mults_string = x.get('mult') 
-        mults = [float(i) for i in mults_string[1:-1].split(',')]
-        low_load = min(mults)
-        mults[0] = low_load
-        new_mults_string = str(mults)
-        new_mults_string = new_mults_string.replace(" ","")
-        x.update({'mult' : new_mults_string})
-  # replace first value of all generation loadshapes with the maximum of those loadshapes 
-  for i in gen_loadshape_names:
-    for x in tree_copy:
-      if x.get('object','').startswith(i):
-        mults_string = x.get('mult') 
-        mults = [float(i) for i in mults_string[1:-1].split(',')]
-        high_gen = max(mults)
-        mults[0] = high_gen
-        new_mults_string = str(mults)
-        new_mults_string = new_mults_string.replace(" ","")
-        x.update({'mult' : new_mults_string})
+  if hour == None:
+    # replace first value of all load loadshapes with the minimum of those loadshapes  
+    for i in load_loadshape_names:
+      for x in tree_copy:
+        if x.get('object','').startswith(i):
+          mults_string = x.get('mult') 
+          mults = [float(i) for i in mults_string[1:-1].split(',')]
+          low_load = min(mults)
+          mults[0] = low_load
+          new_mults_string = str(mults)
+          new_mults_string = new_mults_string.replace(" ","")
+          x.update({'mult' : new_mults_string})
+    # replace first value of all generation loadshapes with the maximum of those loadshapes 
+    for i in gen_loadshape_names:
+      for x in tree_copy:
+        if x.get('object','').startswith(i):
+          mults_string = x.get('mult') 
+          mults = [float(i) for i in mults_string[1:-1].split(',')]
+          high_gen = max(mults)
+          mults[0] = high_gen
+          new_mults_string = str(mults)
+          new_mults_string = new_mults_string.replace(" ","")
+          x.update({'mult' : new_mults_string})
+
+  if hour != None:
+    for i in loadshapes:
+      for x in tree_copy:
+        if x.get('object','').startswith(i):
+          mults_string = x.get('mult') 
+          mults = [float(i) for i in mults_string[1:-1].split(',')]
+          hour_load = mults[hour - 1]
+          mults[0] = hour_load
+          new_mults_string = str(mults)
+          new_mults_string = new_mults_string.replace(" ","")
+          x.update({'mult' : new_mults_string})
   return tree_copy
 
 

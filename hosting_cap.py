@@ -85,8 +85,9 @@ def network_plot(file_path, counter, hour_input, figsize=(50,50), output_name='n
 	# add bus nodes to dictionary for later coloring according to voltage
 	bus_volts = {}
 	bus_labels = {}
+	volts['pu max'] = volts[[' pu1',' pu2',' pu3']].max(axis=1)
 	for index, row in volts.iterrows():
-		bus_volts[row['Bus']] = row[' pu1'] # TODO: select PU phase containing greatest PU voltage? take maximums/row of all 3 phases?
+		bus_volts[row['Bus']] = row['pu max'] 
 		bus_labels[row['Bus']] = row['Bus']
 
 	# LOADS
@@ -159,7 +160,7 @@ def network_plot(file_path, counter, hour_input, figsize=(50,50), output_name='n
 	plt.clf
 
 
-def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
+def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries='snapshot'):
 	tree = dss_manipulation.dss_to_tree(file_path)
 	# arrange max load loadshapes and minimum generation loadshapes at front 
 	if snapshot_or_timeseries == 'snapshot':	
@@ -179,7 +180,10 @@ def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
 				print("hour should equal one!")
 				network_plot("cap_circuit.dss", i, None)
 			if snapshot_or_timeseries == 'timeseries':
-				network_plot("cap_circuit.dss", i, hour)
+				ts_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
+				ts_tree = dss_manipulation.host_cap_dss_arrange(ts_tree, hour)
+				dss_manipulation.tree_to_dss(ts_tree, 'cap_circuit.dss')
+				network_plot("cap_circuit.dss", i, 1)
 			break				
 	else:
 		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
@@ -314,34 +318,35 @@ def _getByName(tree, name):
     return matches[0]
 
 
-# def plot_heat_map(file_path, turb_min, turb_max, figsize=(50,50), output_name='heat_map.png', show_labels=True, node_size=300, font_size=10):
-# 	# 1. get coordinates for plot and set tree variable 
-# 	coords = runDSS(file_path)
-# 	tree = dss_manipulation.dss_to_tree(file_path)
-
-# 	# 2. add turbines one by one until a hosting capacity is reached 
-# 	# 3. once first hosting cap is reached, begin documenting when each node passes hosting cap and keep adding turbines 
+# def plot_heat_map(file_path, turb_min, turb_max, snapshot_or_timeseries='snapshot', figsize=(50,50), output_name='heat_map.png', show_labels=True, node_size=300, font_size=10):
+# 	# once first hosting cap is reached, begin documenting when each node passes hosting cap and keep adding turbines 
 # 	breaking_point = {}
+
+# 	tree = dss_manipulation.dss_to_tree(file_path)
+# 	# arrange max load loadshapes and minimum generation loadshapes at front 
+# 	if snapshot_or_timeseries == 'snapshot':	
+# 		for y in tree:
+# 			if y.get('object','').startswith('load.') and 'daily' in y.keys():
+# 				tree = dss_manipulation.host_cap_dss_arrange(tree, None)
+# 				break
+# 	# adds generation at each load 15.6 kW at a time
 # 	i  = None
 # 	for i in range(turb_min, turb_max):
 # 		dg_tree = dss_manipulation.add_turbine(tree, i, 15.6)
 # 		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
-# 		dssFileLoc = os.path.dirname(os.path.abspath('cap_circuit.dss'))
-# 		runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
-# 		volts = pd.read_csv(dssFileLoc + '/volts.csv')
-# 		volt_values = {}
-# 		for index, row in volts.iterrows():
-# 			volt_values[row['Bus']] = row[' pu1']
-# 		# sort the values and break if the largest surpasses 1.05
-# 		# max_volt = max(volt_values.values())
-# 		# print(i, max_volt)
-# 		# if max_volt >= 1.05:
-# 		# 	break 
-# 		# if a bus passes 1.05, add the kilowattage to dictionary 
+# 		maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+# 		print(i, maximums, hour)
+# 		if any(j >= 1.05 for j in maximums):
+# 			if snapshot_or_timeseries == 'snapshot':
+# 				print("hour should equal one!")
+# 				network_plot("cap_circuit.dss", i, None)
+# 			if snapshot_or_timeseries == 'timeseries':
+# 				network_plot("cap_circuit.dss", i, hour)
+# 			break				
+# 	else:
+# 		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
 
-# 	runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
-# 	volts = pd.read_csv(dssFileLoc + '/volts.csv')
-# 	coords.columns = ['Bus', 'X', 'Y', 'radius']
+
 # 	G = nx.Graph()
 # 	# Get the coordinates.
 # 	pos = {}
@@ -401,7 +406,7 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-# get_hosting_cap("lehigh.dss", 160, 190, 'snapshot')
+get_hosting_cap("lehigh.dss", 179, 190, 'timeseries')
 # get_hosting_cap("wto_buses_xy.dss", 0, 10, 'timeseries')
 # newQstsPlot('lehigh.dss', 60, 8760)
-network_plot("cap_circuit.dss", 168, 1)
+# network_plot("cap_circuit.dss", 168, 1)

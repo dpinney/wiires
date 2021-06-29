@@ -9,6 +9,10 @@ import opendssdirect as dss
 import fire
 import copy
 import numpy as np
+import random
+import math
+import feeder
+import json
 
 def dss_to_tree(path_to_dss):
   ''' Convert a .dss file to an in-memory, OMF-compatible 'tree' object.
@@ -207,6 +211,7 @@ def host_cap_dss_arrange(dss_tree, hour):
           new_mults_string = new_mults_string.replace(" ","")
           x.update({'mult' : new_mults_string})
 
+  # replace first loadshapes with loadshapes of the hour at which the timeseries hosting capacity is reached 
   if hour != None:
     for i in loadshapes:
       for x in tree_copy:
@@ -221,7 +226,186 @@ def host_cap_dss_arrange(dss_tree, hour):
   return tree_copy
 
 
-# tree = dss_to_tree("data/wto_buses_xy.dss")
-# import pprint as pp
-# pp.pprint(tree)
-# tree_to_dss(tree, "data/test_circuit.dss")
+def dssToOmd(dssFilePath, RADIUS=0.0002):
+  ''' Generate an OMD.
+  SIDE-EFFECTS: creates the OMD'''
+  # Injecting additional coordinates.
+  #TODO: derive sensible RADIUS from lat/lon numbers.
+  tree = dss_to_tree(dssFilePath)
+  evil_glm = evilDssTreeToGldTree(tree)
+  name_map = _name_to_key(evil_glm)
+  for ob in evil_glm.values():
+    ob_name = ob.get('name','')
+    ob_type = ob.get('object','')
+    if 'parent' in ob:
+      parent_loc = name_map[ob['parent']]
+      parent_ob = evil_glm[parent_loc]
+      parent_lat = parent_ob.get('latitude', None)
+      parent_lon = parent_ob.get('longitude', None)
+      # place randomly on circle around parent.
+      angle = random.random()*3.14159265*2;
+      x = math.cos(angle)*RADIUS;
+      y = math.sin(angle)*RADIUS;
+      ob['latitude'] = str(float(parent_lat) + x)
+      ob['longitude'] = str(float(parent_lon) + y)
+      # print(ob)
+  return evil_glm
+
+
+def evilDssTreeToGldTree(dssTree):
+  ''' World's worst and ugliest converter. Hence evil. 
+  We built this to do quick-and-dirty viz of openDSS files. '''
+  gldTree = {}
+  g_id = 1
+  # Build bad gld representation of each object
+  bus_names = []
+  bus_with_coords = []
+  # Handle all the components.
+  for ob in dssTree:
+    try:
+      if ob['!CMD'] == 'setbusxy':
+        gldTree[str(g_id)] = {
+          'object': 'bus',
+          'name': ob['bus'],
+          'latitude': ob['y'],
+          'longitude': ob['x']
+        }
+        bus_with_coords.append(ob['bus'])
+      elif ob['!CMD'] == 'new':
+        obtype, name = ob['object'].split('.', maxsplit=1)
+        if 'bus1' in ob and 'bus2' in ob:
+          # line-like object. includes reactors.
+          fro, froCode = ob['bus1'].split('.', maxsplit=1)
+          to, toCode = ob['bus2'].split('.', maxsplit=1)
+          gldTree[str(g_id)] = {
+            'object': obtype,
+            'name': name,
+            'from': fro,
+            'to': to,
+            '!FROCODE': '.' + froCode,
+            '!TOCODE': '.' + toCode
+          }
+          bus_names.extend([fro, to])
+          stuff = gldTree[str(g_id)]
+          _extend_with_exc(ob, stuff, ['object','bus1','bus2','!CMD'])
+        elif 'buses' in ob:
+          #transformer-like object.
+          bb = ob['buses']
+          bb = bb.replace(']','').replace('[','').split(',')
+          b1 = bb[0]
+          fro, froCode = b1.split('.', maxsplit=1)
+          ob['!FROCODE'] = '.' + froCode
+          b2 = bb[1]
+          to, toCode = b2.split('.', maxsplit=1)
+          ob['!TOCODE'] = '.' + toCode
+          gldobj = {
+            'object': obtype,
+            'name': name,
+            'from': fro,
+            'to': to
+          }
+          bus_names.extend([fro, to])
+          if len(bb)==3:
+            b3 = bb[2]
+            to2, to2Code = b3.split('.', maxsplit=1)
+            ob['!TO2CODE'] = '.' + to2Code
+            gldobj['to2'] = to2
+            bus_names.append(to2)
+          gldTree[str(g_id)] = gldobj
+          _extend_with_exc(ob, gldTree[str(g_id)], ['object','buses','!CMD'])
+        elif 'bus' in ob:
+          #load-like object.
+          bus_root, connCode = ob['bus'].split('.', maxsplit=1)
+          gldTree[str(g_id)] = {
+            'object': obtype,
+            'name': name,
+            'parent': bus_root,
+            '!CONNCODE': '.' + connCode
+          }
+          bus_names.append(bus_root)
+          _extend_with_exc(ob, gldTree[str(g_id)], ['object','bus','!CMD'])
+        elif 'bus1' in ob and 'bus2' not in ob:
+          #load-like object, alternate syntax
+          try:
+            bus_root, connCode = ob['bus1'].split('.', maxsplit=1)
+            ob['!CONNCODE'] = '.' + connCode
+          except:
+            bus_root = ob['bus1'] # this shoudln't happen if the .clean syntax guide is followed.
+          gldTree[str(g_id)] = {
+            'object': obtype,
+            'name': name,
+            'parent': bus_root,
+          }
+          bus_names.append(bus_root)
+          _extend_with_exc(ob, gldTree[str(g_id)], ['object','bus1','!CMD'])
+        elif 'element' in ob:
+          #control object (connected to another object instead of a bus)
+          #cobtype, cobname, connCode = ob['element'].split('.', maxsplit=2)
+          cobtype, cobname = ob['element'].split('.', maxsplit=1)
+          gldTree[str(g_id)] = {
+            'object': obtype,
+            'name': name,
+            'parent': cobtype + '.' + cobname,
+          }
+          _extend_with_exc(ob, gldTree[str(g_id)], ['object','element','!CMD'])
+        else:
+          #config-like object
+          gldTree[str(g_id)] = {
+            'object': obtype,
+            'name': name
+          }
+          _extend_with_exc(ob, gldTree[str(g_id)], ['object','!CMD'])
+      elif ob.get('object','').split('.')[0]=='vsource':
+        obtype, name = ob['object'].split('.')
+        conn, connCode = ob.get('bus1').split('.', maxsplit=1)
+        gldTree[str(g_id)] = {
+          'object': obtype,
+          'name': name,
+          'parent': conn,
+          '!CONNCODE': '.' + connCode
+        }
+        _extend_with_exc(ob, gldTree[str(g_id)], ['object','bus1'])
+      elif ob['!CMD']=='edit':
+        #TODO: handle edited objects? maybe just extend the 'new' block (excluding vsource) because the functionality is basically the same.
+        warnings.warn(f"Ignored 'edit' command: {ob}")
+      elif ob['!CMD'] not in ['new', 'setbusxy', 'edit']: # what about 'set', 
+        #command-like objects.
+        gldTree[str(g_id)] = {
+          'object': '!CMD',
+          'name': ob['!CMD']
+        }
+        _extend_with_exc(ob, gldTree[str(g_id)], ['!CMD'])
+      else:
+        warnings.warn(f"Ignored {ob}")
+      g_id += 1
+    except:
+      raise Exception(f"\n\nError encountered on parsing object {ob}\n")
+  # Warn on buses with no coords.
+  #no_coord_buses = set(bus_names) - set(bus_with_coords)
+  #if len(no_coord_buses) != 0:
+    #warnings.warn(f"Buses without coordinates:{no_coord_buses}")
+  return gldTree
+
+
+def _extend_with_exc(from_d, to_d, exclude_list):
+  ''' Add all items in from_d to to_d that aren't in exclude_list. '''
+  good_items = {k: from_d[k] for k in from_d if k not in exclude_list}
+  to_d.update(good_items)
+
+
+def _name_to_key(glm):
+  ''' Make fast lookup map by name in a glm.
+  WARNING: if the glm changes, the map will no longer be valid.'''
+  mapping = {}
+  for key, val in glm.items():
+    if 'name' in val:
+      mapping[val['name']] = key
+  return mapping
+
+
+def evilToOmd(evilTree, outPath):
+  omdStruct = dict(feeder.newFeederWireframe)
+  omdStruct['syntax'] = 'DSS'
+  omdStruct['tree'] = evilTree
+  with open(outPath, 'w') as outFile:
+    json.dump(omdStruct, outFile, indent=4)

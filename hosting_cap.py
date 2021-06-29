@@ -51,23 +51,27 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=10):
-	''' Plot the physical topology of the circuit. '''
+def network_plot(file_path, counter, hour_input, figsize=(50,50), output_name='networkPlot.png', show_labels=True, node_size=300, font_size=15):
+	if hour_input == None:
+		hour_input = 1
 	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
-	coords = runDSS(file_path)
+	
+	# BUSES
+	bus_coords = runDSS(file_path)
+	bus_coords.columns = ['Bus', 'X', 'Y', 'radius']
 	runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
 	volts = pd.read_csv(dssFileLoc + '/volts.csv')
-	coords.columns = ['Bus', 'X', 'Y', 'radius']
 	G = nx.Graph()
-	# Get the coordinates.
+	# add bus nodes to graph and append bus coords to position dictionary 
 	pos = {}
-	for index, row in coords.iterrows():
+	for index, row in bus_coords.iterrows():
 		try:
 			bus_name = str(int(row['Bus']))
 		except:
 			bus_name = row['Bus']
 		G.add_node(bus_name)
 		pos[bus_name] = (float(row['X']), float(row['Y']))
+
 	# Get the connecting edges using Pandas.
 	lines = dss.utils.lines_to_dataframe()
 	edges = []
@@ -77,16 +81,59 @@ def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.p
 		bus2 = row['Bus2'].split('.')[0].upper()
 		edges.append((bus1, bus2))
 	G.add_edges_from(edges)
-	# We'll color the nodes according to voltage.
-	volt_values = {}
-	labels = {}
+
+	# add bus nodes to dictionary for later coloring according to voltage
+	bus_volts = {}
+	bus_labels = {}
 	for index, row in volts.iterrows():
-		volt_values[row['Bus']] = row[' pu1']
-		labels[row['Bus']] = row['Bus']
-	all_values = volt_values.values()
-	max_volt = max(all_values)
-	big_bus = max(volt_values, key=volt_values.get)
+		bus_volts[row['Bus']] = row[' pu1'] # TODO: select PU phase containing greatest PU voltage? take maximums/row of all 3 phases?
+		bus_labels[row['Bus']] = row['Bus']
+
+	# LOADS
+	# get every hour_input load name and maximum PU voltage and create new volts and labels objects 
+	timeseries_load = pd.read_csv('timeseries_load.csv')
+	timeseries_load = timeseries_load.loc[timeseries_load.hour==hour_input]
+	timeseries_load['PU max'] = timeseries_load.loc[:,'V1(PU)':'V3(PU)'].max(axis=1)
+	load_volts = {}
+	load_labels = {}
+	for index, row in timeseries_load.iterrows():
+		load_volts[row['Name']] = row['PU max']
+		load_labels[row['Name']] = row['Name']
+
+	labels = {**bus_labels,**load_labels}
+
+	# use dssToOmd() to get load coordinates 
+	glm = dss_manipulation.dssToOmd(file_path, RADIUS=0.0002)
+	glm_list = (list(glm.values()))
+	load_names = []
+	load_lat = []
+	load_lon = []
+	for i in glm_list:
+		if i['object'] == 'load':
+			load_names.append(i['name'])
+			load_lat.append(i['latitude'])
+			load_lon.append(i['longitude'])
+
+	# add node for every load 
+	for i,j,k in zip(load_names,load_lat,load_lon):
+		G.add_node(i)
+		pos[i] = (j,k)
+
+	# Get the connecting edges using Pandas.
+	# lines = dss.utils.lines_to_dataframe()
+	# edges = []
+	# for index, row in lines.iterrows():
+	# 	#HACK: dss upercases everything in the coordinate output.
+	# 	bus1 = row['Bus1'].split('.')[0].upper()
+	# 	bus2 = row['Bus2'].split('.')[0].upper()
+	# 	edges.append((bus1, bus2))
+	# G.add_edges_from(edges)
+
+	volt_values = {**bus_volts,**load_volts}
+
+	big_load = max(load_volts, key=load_volts.get)
 	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
+	max_volt = max(colorCode)
 
 	# set edge color to red if node hit hosting capacity 
 	edge_colors = []
@@ -94,7 +141,7 @@ def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.p
 		if volt_values.get(node, 0.0) >= 1.05:
 			edge_colors.append("red")
 		else:
-			edge_colors.append("black")
+			edge_colors.append("black")	
 
 	# Start drawing.
 	plt.figure(figsize=figsize) 
@@ -103,11 +150,10 @@ def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.p
 	if show_labels:
 		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
 	plt.colorbar(nodes)
-	# plt.title('Network Voltage Layout')
-	if hour != None:
-		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour) + ".")
+	if hour_input != None:
+		plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour_input) + ".")
 	else:
-		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
+		plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
 	plt.tight_layout()
 	plt.savefig(dssFileLoc + '/' + output_name)
 	plt.clf
@@ -115,48 +161,31 @@ def network_plot(file_path, i, hour, figsize=(50,50), output_name='networkPlot.p
 
 def get_hosting_cap(file_path, turb_min, turb_max, snapshot_or_timeseries):
 	tree = dss_manipulation.dss_to_tree(file_path)
-	# loads = [y.get('object') for y in tree if y.get('object','').startswith('load.')]
 	# arrange max load loadshapes and minimum generation loadshapes at front 
 	if snapshot_or_timeseries == 'snapshot':	
 		for y in tree:
 			if y.get('object','').startswith('load.') and 'daily' in y.keys():
 				tree = dss_manipulation.host_cap_dss_arrange(tree, None)
 				break
-
 	# adds generation at each load 15.6 kW at a time
 	i  = None
 	for i in range(turb_min, turb_max):
 		dg_tree = dss_manipulation.add_turbine(tree, i, 15.6)
 		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
-		if snapshot_or_timeseries == 'snapshot':
-			dssFileLoc = os.path.dirname(os.path.abspath('cap_circuit.dss'))
-			coords = runDSS('cap_circuit.dss')
-			runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
-			volts = pd.read_csv(dssFileLoc + '/volts.csv')
-			volt_values = {}
-			for index, row in volts.iterrows():
-				volt_values[row['Bus']] = row[' pu1']
-			# sort the values and break if the largest surpasses 1.05
-			max_volt = max(volt_values.values())
-			print(i, max_volt)
-			if max_volt >= 1.05:
+		maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+		print(i, maximums, hour)
+		if any(j >= 1.05 for j in maximums):
+			if snapshot_or_timeseries == 'snapshot':
+				print("hour should equal one!")
 				network_plot("cap_circuit.dss", i, None)
-				break
-		if snapshot_or_timeseries == 'timeseries':
-			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
-			print(i, maximums, hour)
-			if any(j >= 1.05 for j in maximums):
-				# put loadshapes from "hour" hour first in cap_circuit.dss
-				timeseries_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
-				timeseries_tree = dss_manipulation.host_cap_dss_arrange(timeseries_tree, hour)
-				dss_manipulation.tree_to_dss(timeseries_tree, 'cap_circuit.dss')
+			if snapshot_or_timeseries == 'timeseries':
 				network_plot("cap_circuit.dss", i, hour)
-				break
+			break				
 	else:
 		print("Circuit did not reach hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW.")
 
 
-def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, actions={}, filePrefix='timeseries'):
+def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, actions={}):
 	''' Use monitor objects to generate voltage values for a timeseries powerflow. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(filePath))
 	volt_coord = runDSS(filePath)
@@ -172,29 +201,11 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		mon_name = f'mon{obType}-{name}'
 		if obData.startswith('circuit.'):
 			circ_name = name
-		# elif obData.startswith('vsource.'):
-		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
-		# 	mon_names.append(mon_name)
-		# elif obData.startswith('isource.'):
-		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
-		# 	mon_names.append(mon_name)
-		# elif obData.startswith('generator.') or obData.startswith('isource.') or obData.startswith('storage.'):
-		# 	mon_name = f'mongenerator-{name}'
-		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=1 ppolar=no')
-		# 	mon_names.append(mon_name)
 		elif ob.get('object','').startswith('load.'):
 			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
 			mon_names.append(mon_name)
-			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':['monload-' + name]})
+			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':[name]})
 			base_kvs = base_kvs.append(new_kv)
-		# elif ob.get('object','').startswith('capacitor.'):
-		# 	runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=6')
-		# 	mon_names.append(mon_name)
-		# elif ob.get('object','').startswith('regcontrol.'):
-		# 	tformer = ob.get('transformer','NONE')
-		# 	winding = ob.get('winding',1)
-		# 	runDssCommand(f'new object=monitor.{mon_name} element=transformer.{tformer} terminal={winding} mode=2')
-		# 	mon_names.append(mon_name)
 	# Run DSS
 	runDssCommand(f'set mode=yearly stepsize={stepSizeInMinutes}m ')
 	if actions == {}:
@@ -214,10 +225,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 	for name in mon_names:
 		runDssCommand(f'export monitors monitorname={name}')
 	# Aggregate monitors
-	all_gen_df = pd.DataFrame()
 	all_load_df = pd.DataFrame()
-	all_source_df = pd.DataFrame()
-	all_control_df = pd.DataFrame()
 	for name in mon_names:
 		csv_path = f'{dssFileLoc}/{circ_name}_Mon_{name}.csv'
 		df = pd.read_csv(f'{circ_name}_Mon_{name}.csv')
@@ -244,28 +252,9 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 				df[[' V2']] = np.NaN
 			# print("df after phase reassignment:")
 			# print(df.head(10))
-			df['Name'] = name
+			df['Name'] = ob_name
 			all_load_df = pd.concat([all_load_df, df], ignore_index=True, sort=False)
 			# # pd.set_option('display.max_columns', None)
-		elif name.startswith('mongenerator-'):
-			df['Name'] = name
-			all_gen_df = pd.concat([all_gen_df, df], ignore_index=True, sort=False)
-		elif name.startswith('monvsource-'):
-			df['Name'] = name
-			all_source_df = pd.concat([all_source_df, df], ignore_index=True, sort=False)
-		elif name.startswith('monisource-'):
-			df['Name'] = name
-			all_source_df = pd.concat([all_source_df, df], ignore_index=True, sort=False)
-		elif name.startswith('moncapacitor-'):
-			df['Type'] = 'Capacitor'
-			df['Name'] = name
-			df = df.rename({' Step_1 ': 'Tap(pu)'}, axis='columns') #HACK: rename to match regulator tap name
-			all_control_df = pd.concat([all_control_df, df], ignore_index=True, sort=False)
-		elif name.startswith('monregcontrol-'):
-			df['Type'] = 'Transformer'
-			df['Name'] = name
-			df = df.rename({' Tap (pu)': 'Tap(pu)'}, axis='columns') #HACK: rename to match cap tap name
-			all_control_df = pd.concat([all_control_df, df], ignore_index=True, sort=False)
 		if not keepAllFiles:
 			os.remove(csv_path)
 	# Collect switching actions
@@ -281,22 +270,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 			ob_name = switch_ob[1][7:]
 			new_row = {'hour':key, 't(sec)':0.0,'Tap(pu)':1,'Type':'Switch','Name':ob_name}
 			all_control_df = all_control_df.append(new_row, ignore_index=True)
-	# Write final aggregates
-	if not all_gen_df.empty:
-		all_gen_df.sort_values(['Name','hour'], inplace=True)
-		all_gen_df.columns = all_gen_df.columns.str.replace(r'[ "]','',regex=True)
-		all_gen_df.to_csv(f'{dssFileLoc}/{filePrefix}_gen.csv', index=False)
-	if not all_control_df.empty:
-		all_control_df.sort_values(['Name','hour'], inplace=True)
-		all_control_df.columns = all_control_df.columns.str.replace(r'[ "]','',regex=True)
-		all_control_df.to_csv(f'{dssFileLoc}/{filePrefix}_control.csv', index=False)
-	if not all_source_df.empty:
-		all_source_df.sort_values(['Name','hour'], inplace=True)
-		all_source_df.columns = all_source_df.columns.str.replace(r'[ "]','',regex=True)
-		all_source_df["P1(kW)"] = all_source_df["V1"].astype(float) * all_source_df["I1"].astype(float) / 1000.0
-		all_source_df["P2(kW)"] = all_source_df["V2"].astype(float) * all_source_df["I2"].astype(float) / 1000.0
-		all_source_df["P3(kW)"] = all_source_df["V3"].astype(float) * all_source_df["I3"].astype(float) / 1000.0
-		all_source_df.to_csv(f'{dssFileLoc}/{filePrefix}_source.csv', index=False)
+	# Write final aggregate
 	if not all_load_df.empty:
 		all_load_df.sort_values(['Name','hour'], inplace=True)
 		all_load_df.columns = all_load_df.columns.str.replace(r'[ "]','',regex=True)
@@ -307,7 +281,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		#all_load_df['V2'][(all_load_df['VAngle2']==0) & (all_load_df['V2']==0)] = "NaN"
 		all_load_df['V2(PU)'] = all_load_df['V2'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
 		all_load_df['V3(PU)'] = all_load_df['V3'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
-		all_load_df.to_csv(f'{dssFileLoc}/{filePrefix}_load.csv', index=False)
+		all_load_df.to_csv(f'{dssFileLoc}/timeseries_load.csv', index=False)
 		PU1 = all_load_df['V1(PU)']
 		PU2 = all_load_df['V2(PU)']
 		PU3 = all_load_df['V3(PU)']
@@ -327,9 +301,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		hours = hour1, hour2, hour3
 
 		maximums_list = maximums.tolist()
-		print(maximums_list, hours[maximums_list.index(max(maximums_list))])
 		return maximums_list, hours[maximums_list.index(max(maximums_list))]
-
 
 
 def _getByName(tree, name):
@@ -342,11 +314,94 @@ def _getByName(tree, name):
     return matches[0]
 
 
+# def plot_heat_map(file_path, turb_min, turb_max, figsize=(50,50), output_name='heat_map.png', show_labels=True, node_size=300, font_size=10):
+# 	# 1. get coordinates for plot and set tree variable 
+# 	coords = runDSS(file_path)
+# 	tree = dss_manipulation.dss_to_tree(file_path)
+
+# 	# 2. add turbines one by one until a hosting capacity is reached 
+# 	# 3. once first hosting cap is reached, begin documenting when each node passes hosting cap and keep adding turbines 
+# 	breaking_point = {}
+# 	i  = None
+# 	for i in range(turb_min, turb_max):
+# 		dg_tree = dss_manipulation.add_turbine(tree, i, 15.6)
+# 		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+# 		dssFileLoc = os.path.dirname(os.path.abspath('cap_circuit.dss'))
+# 		runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
+# 		volts = pd.read_csv(dssFileLoc + '/volts.csv')
+# 		volt_values = {}
+# 		for index, row in volts.iterrows():
+# 			volt_values[row['Bus']] = row[' pu1']
+# 		# sort the values and break if the largest surpasses 1.05
+# 		# max_volt = max(volt_values.values())
+# 		# print(i, max_volt)
+# 		# if max_volt >= 1.05:
+# 		# 	break 
+# 		# if a bus passes 1.05, add the kilowattage to dictionary 
+
+# 	runDssCommand('Export voltages "' + dssFileLoc + '/volts.csv"')
+# 	volts = pd.read_csv(dssFileLoc + '/volts.csv')
+# 	coords.columns = ['Bus', 'X', 'Y', 'radius']
+# 	G = nx.Graph()
+# 	# Get the coordinates.
+# 	pos = {}
+# 	for index, row in coords.iterrows():
+# 		try:
+# 			bus_name = str(int(row['Bus']))
+# 		except:
+# 			bus_name = row['Bus']
+# 		G.add_node(bus_name)
+# 		pos[bus_name] = (float(row['X']), float(row['Y']))
+# 	# Get the connecting edges using Pandas.
+# 	lines = dss.utils.lines_to_dataframe()
+# 	edges = []
+# 	for index, row in lines.iterrows():
+# 		#HACK: dss upercases everything in the coordinate output.
+# 		bus1 = row['Bus1'].split('.')[0].upper()
+# 		bus2 = row['Bus2'].split('.')[0].upper()
+# 		edges.append((bus1, bus2))
+# 	G.add_edges_from(edges)
+# 	# We'll color the nodes according to voltage.
+# 	volt_values = {}
+# 	labels = {}
+# 	for index, row in volts.iterrows():
+# 		volt_values[row['Bus']] = row[' pu1']
+# 		labels[row['Bus']] = row['Bus']
+# 	all_values = volt_values.values()
+# 	max_volt = max(all_values)
+# 	big_bus = max(volt_values, key=volt_values.get)
+# 	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
+
+# 	# set edge color to red if node hit hosting capacity 
+# 	edge_colors = []
+# 	for node in G.nodes():
+# 		if volt_values.get(node, 0.0) >= 1.05:
+# 			edge_colors.append("red")
+# 		else:
+# 			edge_colors.append("black")
+
+# 	# Start drawing.
+# 	plt.figure(figsize=figsize) 
+# 	nodes = nx.draw_networkx_nodes(G, pos, node_color=colorCode, node_size=node_size, edgecolors=edge_colors)
+# 	edges = nx.draw_networkx_edges(G, pos)
+# 	if show_labels:
+# 		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
+# 	plt.colorbar(nodes)
+# 	# plt.title('Network Voltage Layout')
+# 	if hour != None:
+# 		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour) + ".")
+# 	else:
+# 		plt.title("Circuit reached hosting capacity at " + str(i + 1) + " 15.6 kW turbines, or " + str(15.6 * (i + 1)) + " kW of distributed generation per load. Node " + big_bus + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
+# 	plt.tight_layout()
+# 	plt.savefig(dssFileLoc + '/' + output_name)
+# 	plt.clf
+
+
 if __name__ == '__main__':
 	fire.Fire()
 
 
-get_hosting_cap("lehigh.dss", 175, 190, 'timeseries')
-# get_hosting_cap("wto_buses_xy.dss", 0, 10, 'snapshot')
+# get_hosting_cap("lehigh.dss", 160, 190, 'snapshot')
+# get_hosting_cap("wto_buses_xy.dss", 0, 10, 'timeseries')
 # newQstsPlot('lehigh.dss', 60, 8760)
-# network_plot("cap_circuit.dss", 4, 4)
+network_plot("cap_circuit.dss", 168, 1)

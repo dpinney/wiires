@@ -11,7 +11,6 @@ import copy
 import numpy as np
 import random
 import math
-import feeder
 import json
 
 def dss_to_tree(path_to_dss):
@@ -121,22 +120,18 @@ def tree_to_dss(tree_object, output_path):
   out_file.close()
 
 
-def add_turbine(dss_tree, turb_count, kw):
+def add_turbine(dss_tree, turb_count, load_bus, kw):
   tree_copy = copy.deepcopy(dss_tree)
-  # get names of all buses
-  load_buses = [y.get('bus1') for y in tree_copy if y.get('object','').startswith('load.')]
-  # get only the buses that have at least one load  
-  load_buses = list(dict.fromkeys(load_buses))
+  load_bus = load_bus.split('.')[0]
   # add a wind turbine at each load bus immediately before solve statement 
-  for i in load_buses:
-    for s in range(turb_count):
-      tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
-	    'object': f'generator.wind_{i}_{s}',
-	    'bus': f'{i}.1.2.3',
-	    'kw': kw,
-	    'pf': '1.0',
-	    'conn': 'delta',
-	    'model': '1'})
+  for s in range(turb_count):
+    tree_copy.insert(tree_copy.index([x for x in tree_copy if x.get('!CMD','').startswith('solve')][0]), {'!CMD': 'new',
+    'object': f'generator.wind_{load_bus}_{s}',
+    'bus': f'{load_bus}.1.2.3',
+    'kw': kw,
+    'pf': '1.0',
+    'conn': 'delta',
+    'model': '1'})
   return tree_copy
 
 
@@ -401,11 +396,3 @@ def _name_to_key(glm):
     if 'name' in val:
       mapping[val['name']] = key
   return mapping
-
-
-def evilToOmd(evilTree, outPath):
-  omdStruct = dict(feeder.newFeederWireframe)
-  omdStruct['syntax'] = 'DSS'
-  omdStruct['tree'] = evilTree
-  with open(outPath, 'w') as outFile:
-    json.dump(omdStruct, outFile, indent=4)

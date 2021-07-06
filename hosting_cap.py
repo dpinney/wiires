@@ -197,18 +197,16 @@ def get_hosting_cap(file_path, turb_min, turb_max, turb_kw, snapshot_or_timeseri
 			print(counter, maximums, hour)
 			if any(j >= 1.05 for j in maximums):
 				cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
-				print(cap_dict)
 				break				
 		else:
 			cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 			print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
-	if snapshot_or_timeseries == 'snapshot':
-		print("hour should equal one!")
 	if snapshot_or_timeseries == 'timeseries':
 		ts_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
 		ts_tree = dss_manipulation.host_cap_dss_arrange(ts_tree, hour)
 		dss_manipulation.tree_to_dss(ts_tree, 'cap_circuit.dss')
 	network_plot('cap_circuit.dss', cap_dict, 1, figsize=(20,20), output_name='network_plot.png')
+	print(cap_dict)
 	return cap_dict
 
 

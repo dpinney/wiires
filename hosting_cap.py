@@ -343,9 +343,9 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-cap_dict = get_hosting_cap('lehigh.dss', 1, 2, 100_000, 'timeseries')
+cap_dict = get_hosting_cap('lehigh.dss', 1, 101, 100_000, 'timeseries')
 # cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 1, 'maximums': [1.4442708333333334, 1.3788666666666667, 1.4306541666666668]}, '634.1': {'counter': 10, 'turb_kw': 100000, 'gen_added': 1000000, 'hour': 25, 'maximums': [1.0571407942238267, 1.0131666666666665, 1.0176083333333334]}, '645.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [0.9734791666666667, 0.9802333333333333, 0.9837416666666666]}, '646.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [0.9734791666666667, 0.9802333333333333, 0.9837416666666666]}, '692.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 1, 'maximums': [1.4442708333333334, 1.3788666666666667, 1.4306583333333334]}, '675.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 1, 'maximums': [1.4962208333333333, 1.4263041666666667, 1.46565]}, '611.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [0.9734791666666667, 0.9802333333333333, 0.9837416666666666]}, '652.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [0.9734791666666667, 0.9802333333333333, 0.9837416666666666]}, '670.1': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 4, 'maximums': [1.4016208333333333, 1.4044583333333334, 1.4172083333333334]}, '670.2': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 4, 'maximums': [1.4016208333333333, 1.4044583333333334, 1.4172083333333334]}, '670.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 4, 'maximums': [1.4016208333333333, 1.4044583333333334, 1.4172083333333334]}}
-# cap_df = pd.DataFrame()
-# cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
-# cap_df.to_csv('cap_df.csv')
+cap_df = pd.DataFrame()
+cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
+cap_df.to_csv('cap_df.csv')
 # network_plot('cap_circuit.dss', cap_dict, 1, figsize=(20,20), output_name='network_plot.png', show_labels=True, node_size=500, font_size=25)

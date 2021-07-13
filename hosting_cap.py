@@ -160,7 +160,6 @@ def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', sh
 			node_cm.append('red')
 	print(node_cm)
 
-
 	# set edge color to red if node hit hosting capacity 
 	# edge_colors = []
 	# for node in G.nodes():

@@ -149,16 +149,30 @@ def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', sh
 	# big_load = max(gen_added, key=gen_added.get)
 	# node_cm = [gen_added.get(node, 0.0) for node in G.nodes()]
 	# max_volt = max(node_cm)
+	
+
+
+
+	rescale = lambda y: (y - np.min(y)) / (np.max(y) - np.min(y))
+	gen_added_list = list(gen_added.values())
+	gen_added_list_rescaled = rescale(gen_added_list)
+	# print(gen_added_list_rescaled)
+	
 	node_cm = []
 	cmap = plt.get_cmap()
+	counter = -1
 	for node in G:
 		if node in load_buses:
-			rgba = cmap(gen_added[node])
+			counter = counter + 1 
+			rgba = cmap(gen_added_list_rescaled[counter])
 			print(rgba)
 			node_cm.append(convert_to_hex(rgba))
 		else:
 			node_cm.append('red')
 	print(node_cm)
+
+
+
 
 	# set edge color to red if node hit hosting capacity 
 	# edge_colors = []

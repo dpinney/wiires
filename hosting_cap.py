@@ -51,9 +51,7 @@ def runDSS(dssFilePath, keep_output=True):
 	return coords
 
 
-def network_plot(file_path, counter, hour_input, figsize=(20,20), output_name='network_plot.png', show_labels=True, node_size=500, font_size=25):
-	if hour_input == None:
-		hour_input = 1
+def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50):
 	dssFileLoc = os.path.dirname(os.path.abspath(file_path))
 	
 	# BUSES
@@ -72,7 +70,68 @@ def network_plot(file_path, counter, hour_input, figsize=(20,20), output_name='n
 		G.add_node(bus_name)
 		pos[bus_name] = (float(row['X']), float(row['Y']))
 
+	# add bus nodes to dictionary for later coloring according to voltage
+	# bus_volts = {}
+	bus_labels = {}
+	# volts['pu max'] = volts[[' pu1',' pu2',' pu3']].max(axis=1)
+	for index, row in volts.iterrows():
+	# 	bus_volts[row['Bus']] = row['pu max'] 
+		bus_labels[row['Bus']] = row['Bus']
+
+	# LOADS
+	# get every hour_input load name and maximum PU voltage and create new volts and labels objects 
+	# timeseries_load = pd.read_csv('timeseries_load.csv')
+	# timeseries_load = timeseries_load.loc[timeseries_load.hour==hour_input]
+	# timeseries_load['PU max'] = timeseries_load.loc[:,'V1(PU)':'V3(PU)'].max(axis=1)
+	# load_volts = {}
+	# load_labels = {}
+	# for index, row in timeseries_load.iterrows():
+	# 	load_volts[row['Name']] = row['PU max']
+	# 	load_labels[row['Name']] = row['Name']
+
+	loadbus_names = {}	
+	counters = {}
+	hours = {}
+	maximums = {}
+	gen_added = {}
+	for i in range(len(list(cap_dict.values()))):
+		loadbus_names[list(cap_dict.keys())[i]] = list(cap_dict.keys())[i]
+		counters[list(cap_dict.keys())[i]] = list(cap_dict.values())[i]['counter']
+		hours[list(cap_dict.keys())[i]] = list(cap_dict.values())[i]['hour']
+		maximums[list(cap_dict.keys())[i]] = list(cap_dict.values())[i]['maximums']
+		gen_added[list(cap_dict.keys())[i]] = list(cap_dict.values())[i]['gen_added']
+	# print(loadbus_names)
+	# print(counters)
+	# print(hours)
+	# print(maximums)
+	# print(gen_added)
+
+	# use dss_to_tree() to get load bus (671.1.2.3, 634.1, etc.) names 
+	tree = dss_manipulation.dss_to_tree(file_path)
+	load_buses = [y.get('bus1') for y in tree if y.get('object','').startswith('load.')]
+
+	# use dssToOmd() to get load names and coordinates 
+	glm = dss_manipulation.dssToOmd(file_path, RADIUS=0.0002)
+	glm_list = (list(glm.values()))
+	load_labels = {}
+	load_lat = []
+	load_lon = []
+	parents = []
+	for i in glm_list:
+		if i['object'] == 'load':
+			load_labels[i['name']] = i['name']
+			load_lat.append(i['latitude'])
+			load_lon.append(i['longitude'])
+			parents.append(i['parent'])
+	labels = {**bus_labels,**load_labels}
+
+	# add node for every load 
+	for i,j,k in zip(load_buses,load_lat,load_lon):
+		G.add_node(i)
+		pos[i] = (j,k)
+
 	# Get the connecting edges using Pandas.
+	edge_cm=[]
 	lines = dss.utils.lines_to_dataframe()
 	edges = []
 	for index, row in lines.iterrows():
@@ -80,97 +139,77 @@ def network_plot(file_path, counter, hour_input, figsize=(20,20), output_name='n
 		bus1 = row['Bus1'].split('.')[0].upper()
 		bus2 = row['Bus2'].split('.')[0].upper()
 		edges.append((bus1, bus2))
+		edge_cm.append('b')
+	# ADD EDGES BETWEEN LOADS AND BUSES
+	for i,j in zip(parents,load_buses):
+		edges.append((i,j))
+		edge_cm.append('r')
 	G.add_edges_from(edges)
 
-	# add bus nodes to dictionary for later coloring according to voltage
-	bus_volts = {}
-	bus_labels = {}
-	volts['pu max'] = volts[[' pu1',' pu2',' pu3']].max(axis=1)
-	for index, row in volts.iterrows():
-		bus_volts[row['Bus']] = row['pu max'] 
-		bus_labels[row['Bus']] = row['Bus']
+	# big_load = max(gen_added, key=gen_added.get)
+	# node_cm = [gen_added.get(node, 0.0) for node in G.nodes()]
+	# max_volt = max(node_cm)
+	node_cm = []
+	cmap = plt.get_cmap()
+	for node in G:
+		if node in load_buses:
+			rgba = cmap(gen_added[node])
+			print(rgba)
+			node_cm.append(convert_to_hex(rgba))
+		else:
+			node_cm.append('red')
+	print(node_cm)
 
-	# LOADS
-	# get every hour_input load name and maximum PU voltage and create new volts and labels objects 
-	timeseries_load = pd.read_csv('timeseries_load.csv')
-	timeseries_load = timeseries_load.loc[timeseries_load.hour==hour_input]
-	timeseries_load['PU max'] = timeseries_load.loc[:,'V1(PU)':'V3(PU)'].max(axis=1)
-	load_volts = {}
-	load_labels = {}
-	for index, row in timeseries_load.iterrows():
-		load_volts[row['Name']] = row['PU max']
-		load_labels[row['Name']] = row['Name']
-
-	labels = {**bus_labels,**load_labels}
-
-	# use dssToOmd() to get load coordinates 
-	glm = dss_manipulation.dssToOmd(file_path, RADIUS=0.0002)
-	glm_list = (list(glm.values()))
-	load_names = []
-	load_lat = []
-	load_lon = []
-	for i in glm_list:
-		if i['object'] == 'load':
-			load_names.append(i['name'])
-			load_lat.append(i['latitude'])
-			load_lon.append(i['longitude'])
-
-	# add node for every load 
-	for i,j,k in zip(load_names,load_lat,load_lon):
-		G.add_node(i)
-		pos[i] = (j,k)
-
-	# Get the connecting edges using Pandas.
-	# lines = dss.utils.lines_to_dataframe()
-	# edges = []
-	# for index, row in lines.iterrows():
-	# 	#HACK: dss upercases everything in the coordinate output.
-	# 	bus1 = row['Bus1'].split('.')[0].upper()
-	# 	bus2 = row['Bus2'].split('.')[0].upper()
-	# 	edges.append((bus1, bus2))
-	# G.add_edges_from(edges)
-
-	volt_values = {**bus_volts,**load_volts}
-
-	big_load = max(load_volts, key=load_volts.get)
-	colorCode = [volt_values.get(node, 0.0) for node in G.nodes()]
-	max_volt = max(colorCode)
 
 	# set edge color to red if node hit hosting capacity 
-	edge_colors = []
-	for node in G.nodes():
-		if volt_values.get(node, 0.0) >= 1.05:
-			edge_colors.append("red")
-		else:
-			edge_colors.append("black")	
+	# edge_colors = []
+	# for node in G.nodes():
+	# 	if gen_added.get(node, 0.0) >= 1.05:
+	# 		edge_colors.append("red")
+	# 	else:
+	# 		edge_colors.append("black")	
 
 	# Start drawing.
 	plt.figure(figsize=figsize) 
-	nodes = nx.draw_networkx_nodes(G, pos, node_color=colorCode, node_size=node_size, edgecolors=edge_colors)
-	edges = nx.draw_networkx_edges(G, pos)
-	if show_labels:
-		nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
-	plt.colorbar(nodes)
-	if hour_input != None:
-		plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour_input) + ".")
-	else:
-		plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
+	# nodes = nx.draw_networkx_nodes(G, pos, node_color=node_cm, node_size=node_size)
+	# edges = nx.draw_networkx_edges(G, pos)
+	# if show_labels:
+	# 	nx.draw_networkx_labels(G, pos, labels, font_size=font_size)
+	spring_pos = nx.drawing.layout.spring_layout(G)
+	vmin = min(gen_added.values())
+	vmax = max(gen_added.values())
+	nx.draw_networkx(G, with_labels=True, node_color=node_cm, node_size=node_size, pos=spring_pos, edgelist=edges, edge_color=edge_cm, vmin=vmin, vmax=vmax)
+	# if hour_input != None:
+		# plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + " in hour " + str(hour_input) + ".")
+	# else:
+		# plt.title("Circuit reached hosting capacity at " + str(counter + 1) + " 15.6 kW turbines, or " + str(15.6 * (counter + 1)) + " kW of distributed generation per load. Node " + big_load + " reached hosting capacity at a per unit voltage of " + str(max_volt) + ".")
+	# cmap=plt.cm.cool
+	# sm = plt.cm.ScalarMappable(cmap="cool")
+	sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+	plt.colorbar(sm)
 	plt.tight_layout()
-	plt.savefig(dssFileLoc + '/' + output_name)
+	plt.savefig(dssFileLoc + '/' + output_path + '.png')
 	plt.clf
 
 
-def get_hosting_cap(file_path, turb_min, turb_max, turb_kw, snapshot_or_timeseries='snapshot', load_name='',):
+def convert_to_hex(rgba_color) :
+    red = int(rgba_color[0]*255)
+    green = int(rgba_color[1]*255)
+    blue = int(rgba_color[2]*255)
+    print(red, green, blue)
+    return '#%02x%02x%02x' % (red, green, blue)
+
+
+def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output_path = './test', timeseries=False, load_name=None):
 	tree = dss_manipulation.dss_to_tree(file_path)
-	if load_name != '':
+	if load_name != None:
 		load_buses = [y.get('bus1') for y in tree if load_name in y.get('object','')]
 	else:
-		# get names of all buses that have at least one load and remove duplicates 
+		# get names of all buses that have at least one load 
 		load_buses = [y.get('bus1') for y in tree if y.get('object','').startswith('load.')]
 		load_buses = list(dict.fromkeys(load_buses))
-	print(load_buses)
 	# arrange max load loadshapes and minimum generation loadshapes at front 
-	if snapshot_or_timeseries == 'snapshot':	
+	if timeseries == False:	
 		for y in tree:
 			if y.get('object','').startswith('load.') and 'daily' in y.keys():
 				tree = dss_manipulation.host_cap_dss_arrange(tree, None)
@@ -180,26 +219,33 @@ def get_hosting_cap(file_path, turb_min, turb_max, turb_kw, snapshot_or_timeseri
 	cap_dict = {}
 	for load in load_buses:
 		print(load)
-		for i in range(turb_min, turb_max):
-			dg_tree = dss_manipulation.add_turbine(tree, i, load, turb_kw)
+		for counter in range(turb_min, turb_max):
+			dg_tree = dss_manipulation.add_turbine(tree, counter, load, turb_kw)
 			dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
 			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
-			print(i, maximums, hour)
+			print(counter, maximums, hour)
 			if any(j >= 1.05 for j in maximums):
-				cap_dict[load] = {'counter':i,'hour':hour,'maximums':maximums}
-				print(cap_dict)
+				cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 				break				
 		else:
-			print("Load did not reach hosting capacity at " + str(i + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (i + 1)) + " kW.")
-	if snapshot_or_timeseries == 'snapshot':
-		print("hour should equal one!")
-		# network_plot("cap_circuit.dss", cap_dict, None)
-	if snapshot_or_timeseries == 'timeseries':
+			cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+			print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
+	if timeseries == True:
 		ts_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
 		ts_tree = dss_manipulation.host_cap_dss_arrange(ts_tree, hour)
 		dss_manipulation.tree_to_dss(ts_tree, 'cap_circuit.dss')
-		# network_plot("cap_circuit.dss", cap_dict, 1)
+	# host_cap_plot('cap_circuit.dss', cap_dict, figsize=(20,20), output_name='host_cap_plot.png')
+	if save_csv==True:
+		cap_df = pd.DataFrame()
+		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
+		cap_df.to_csv(f'{output_path}.csv')
 	print(cap_dict)
+	return cap_dict
+
+
+def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50):
+	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name)
+	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 
 
 def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, actions={}):
@@ -335,4 +381,13 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
-get_hosting_cap('lehigh.dss', 1, 2, 15.6, 'timeseries', 'load.611_runway')
+# cap_dict = host_cap_data('wto_buses_xy.dss', 1, 100, 1_000, csv=True, snapshot_or_timeseries='timeseries')
+cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 21, 'maximums': [1.1033416666666667, 0.9913041666666668, 1.073275]}, '634.1': {'counter': 11, 'turb_kw': 100000, 'gen_added': 1100000, 'hour': 23, 'maximums': [1.0522093862815884, 1.0085458333333335, 1.0210583333333334]}, '645.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '646.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '692.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 22, 'maximums': [1.1034291666666667, 0.9913791666666666, 1.073275]}, '675.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 22, 'maximums': [1.1443708333333333, 1.0222208333333334, 1.0995916666666667]}, '611.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '652.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '670.1': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.2': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}}
+test_cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 10, 'hour': 21, 'maximums': [1.1033416666666667, 0.9913041666666668, 1.073275]}, '634.1': {'counter': 11, 'turb_kw': 100000, 'gen_added': 20, 'hour': 23, 'maximums': [1.0522093862815884, 1.0085458333333335, 1.0210583333333334]}, '645.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 30, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '646.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 40, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '692.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 50, 'hour': 22, 'maximums': [1.1034291666666667, 0.9913791666666666, 1.073275]}, '675.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 60, 'hour': 22, 'maximums': [1.1443708333333333, 1.0222208333333334, 1.0995916666666667]}, '611.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 70, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '652.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 80, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '670.1': {'counter': 1, 'turb_kw': 100000, 'gen_added': 90, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.2': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 110, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}}
+# cap_df = pd.DataFrame()
+# cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
+# cap_df.to_csv('cap_df.csv')
+host_cap_plot('lehigh.dss', test_cap_dict, figsize=(20,20), output_path='host_cap_plot.png', show_labels=True, node_size=500, font_size=25)
+
+
+# get_host_cap('wto_buses_xy.dss', 1, 100, 100_000, save_csv=True, timeseries=True, load_name=None, figsize=(20,20), output_path='./wto_test', show_labels=True, node_size=500, font_size=50)

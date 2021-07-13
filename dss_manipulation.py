@@ -221,7 +221,7 @@ def host_cap_dss_arrange(dss_tree, hour):
   return tree_copy
 
 
-def dssToOmd(dssFilePath, RADIUS=0.0002):
+def dssToOmd(dssFilePath, RADIUS=0.00005):
   ''' Generate an OMD.
   SIDE-EFFECTS: creates the OMD'''
   # Injecting additional coordinates.

@@ -139,24 +139,18 @@ def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', sh
 		bus1 = row['Bus1'].split('.')[0].upper()
 		bus2 = row['Bus2'].split('.')[0].upper()
 		edges.append((bus1, bus2))
-		edge_cm.append('b')
+		edge_cm.append('Black')
 	# ADD EDGES BETWEEN LOADS AND BUSES
 	for i,j in zip(parents,load_buses):
 		edges.append((i,j))
-		edge_cm.append('r')
+		edge_cm.append('Gray')
 	G.add_edges_from(edges)
 
-	# big_load = max(gen_added, key=gen_added.get)
 	# node_cm = [gen_added.get(node, 0.0) for node in G.nodes()]
-	# max_volt = max(node_cm)
-	
-
-
 
 	rescale = lambda y: (y - np.min(y)) / (np.max(y) - np.min(y))
 	gen_added_list = list(gen_added.values())
 	gen_added_list_rescaled = rescale(gen_added_list)
-	# print(gen_added_list_rescaled)
 	
 	node_cm = []
 	cmap = plt.get_cmap()
@@ -165,22 +159,9 @@ def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', sh
 		if node in load_buses:
 			counter = counter + 1 
 			rgba = cmap(gen_added_list_rescaled[counter])
-			print(rgba)
 			node_cm.append(convert_to_hex(rgba))
 		else:
-			node_cm.append('red')
-	print(node_cm)
-
-
-
-
-	# set edge color to red if node hit hosting capacity 
-	# edge_colors = []
-	# for node in G.nodes():
-	# 	if gen_added.get(node, 0.0) >= 1.05:
-	# 		edge_colors.append("red")
-	# 	else:
-	# 		edge_colors.append("black")	
+			node_cm.append('Gray')
 
 	# Start drawing.
 	plt.figure(figsize=figsize) 
@@ -209,7 +190,6 @@ def convert_to_hex(rgba_color) :
     red = int(rgba_color[0]*255)
     green = int(rgba_color[1]*255)
     blue = int(rgba_color[2]*255)
-    print(red, green, blue)
     return '#%02x%02x%02x' % (red, green, blue)
 
 
@@ -400,7 +380,7 @@ test_cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 10,
 # cap_df = pd.DataFrame()
 # cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
 # cap_df.to_csv('cap_df.csv')
-host_cap_plot('lehigh.dss', test_cap_dict, figsize=(20,20), output_path='host_cap_plot.png', show_labels=True, node_size=500, font_size=25)
+host_cap_plot('lehigh.dss', cap_dict, figsize=(20,20), output_path='lehigh_host_cap.png', show_labels=True, node_size=500, font_size=25)
 
 
 # get_host_cap('wto_buses_xy.dss', 1, 100, 100_000, save_csv=True, timeseries=True, load_name=None, figsize=(20,20), output_path='./wto_test', show_labels=True, node_size=500, font_size=50)

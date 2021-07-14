@@ -13,7 +13,7 @@ import numpy as np
 import warnings
 import fire
 import itertools
-import multiprocessing
+from multiprocessing import Pool
 
 
 solar_rate = 0.000_024 # $ per Watt
@@ -338,12 +338,12 @@ if __name__ == '__main__':
 
 
 
-'''
+
+
 load = "./data/all_loads_vertical.csv"
 weather_ds = get_weather(39.952437, -75.16378, 2019)
 solar_output_ds = get_solar(weather_ds)
 wind_output_ds = get_wind(weather_ds)
-results = []
 solar_output_ds.reset_index(drop=True, inplace=True)
 wind_output_ds.reset_index(drop=True, inplace=True)
 
@@ -355,12 +355,12 @@ else:
   demand = pd.Series(load) 
 
 solar_min = 0
-solar_max = 60_000_000
+solar_max = 50_000_000
 wind_min = 0 
-wind_max = 60_000_000
+wind_max = 50_000_000
 batt_min = 0
-batt_max = 60_000_000
-stepsize = 5_000
+batt_max = 50_000_000
+stepsize = 5_000_000
 
 solar_iter = range(solar_min, solar_max, stepsize)
 wind_iter = range(wind_min, wind_max, stepsize)
@@ -425,11 +425,13 @@ def iterator(params):
   
   tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
 
-  results.append([tot_cost,solar,wind,batt,sum(rendf['fossil'])])
-pool = multiprocessing.Pool()
-res = pool.map(iterator,param_list)
-results.sort(key=lambda x:x[0])
-print(results[0:10])
-print('also we have a variable named res')
-print(res)
-'''
+  return [tot_cost,solar,wind,batt,sum(rendf['fossil'])]
+
+
+if __name__ == '__main__':
+  pool = Pool(processes=10)
+  res = []
+  res.append(pool.map(iterator,param_list))
+  res[0][0] = res
+  res.sort(key=lambda x:x[0])
+  print(res)

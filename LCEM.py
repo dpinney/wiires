@@ -14,14 +14,7 @@ import warnings
 import fire
 import itertools
 from multiprocessing import Pool
-
-
-solar_rate = 0.000_024 # $ per Watt
-wind_rate = 0.000_009 # $ per Watt
-batt_rate = 0.000_055 # $ per Watt
-grid_rate = 0.000_150 # $ per Watt
-demand_rate = 20 # typical demand rate in $ per kW
-demand_rate = demand_rate / 1000 # $ / Watt 
+import peak_shaving
 
 
 def float_range(start, stop, step):
@@ -130,7 +123,7 @@ def get_wind(weather_ds):
   return wind_output_ds
 
 
-def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
+def direct_ren_mix(load, solar_output_ds, wind_output_ds, solar, wind, batt, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, demand_rate=.02, net_metering=False, export_rate=.000_040):
   solar_output_ds.reset_index(drop=True, inplace=True)
   wind_output_ds.reset_index(drop=True, inplace=True)
 
@@ -213,19 +206,23 @@ def direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds):
   fossil_cost = [grid_rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
   fossil_cost = sum(fossil_cost)
 
-  tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost
+  if net_metering == True:
+    resale = sum(rendf['curtailment']) * export_rate
+    tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost + resale
+  if net_metering == False:
+    tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost
   return mix_df[0:5], mix_chart.show(), tot_cost, sum(mix_df['fossil'])
 
 
-def calc_ren_mix(load, solar, wind, batt, latitude, longitude, year):
+def calc_ren_mix(load, solar, wind, batt, latitude, longitude, year, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, demand_rate=.02, net_metering=False, export_rate=.000_040):
   weather_ds = get_weather(latitude, longitude, year)
   solar_output_ds = get_solar(weather_ds)
   wind_output_ds = get_wind(weather_ds)
-  mix_df, mix_chart, tot_cost, foss = direct_ren_mix(load, solar, wind, batt, solar_output_ds, wind_output_ds)
+  mix_df, mix_chart, tot_cost, foss = direct_ren_mix(load, solar_output_ds, wind_output_ds, solar, wind, batt, solar_rate, wind_rate, batt_rate, grid_rate, demand_rate, net_metering, export_rate)
   return mix_df, mix_chart, tot_cost, foss
 
 
-def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, solar_output_ds, wind_output_ds, stepsize):
+def direct_optimal_mix(load, solar_output_ds, wind_output_ds, solar_min=0, solar_max=60_000_000, wind_min=0, wind_max=60_000_000, batt_min=0, batt_max=60_000_000, stepsize=5_000_000, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, demand_rate=.02, net_metering=False, export_rate=.000_040):
   results = []
   solar_output_ds.reset_index(drop=True, inplace=True)
   wind_output_ds.reset_index(drop=True, inplace=True)
@@ -301,33 +298,37 @@ def direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min,
         fossil_cost = sum(fossil_cost)
         # fossil_cost = sum(rendf['fossil']) * 9e99
         
-        tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
+        if net_metering == True:
+          resale = sum(rendf['curtailment']) * export_rate
+          tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost + resale
+        if net_metering == False:
+          tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost
       
         results.append([tot_cost,solar,wind,batt,sum(rendf['fossil'])])
   results.sort(key=lambda x:x[0])
   return results[0:10]
 
 
-def optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, latitude, longitude, year, stepsize):
+def optimal_mix(load, latitude, longitude, year, solar_min=0, solar_max=60_000_000, wind_min=0, wind_max=60_000_000, batt_min=0, batt_max=60_000_000, stepsize=5_000_000, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, demand_rate=.02, net_metering=False, export_rate=.000_040):
 	weather_ds = get_weather(latitude, longitude, year)
 	solar_output_ds = get_solar(weather_ds)
 	wind_output_ds = get_wind(weather_ds)
-	results = direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, solar_output_ds, wind_output_ds, stepsize)
+	results = direct_optimal_mix(load, solar_output_ds, wind_output_ds, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, stepsize, solar_rate, wind_rate, batt_rate, grid_rate, demand_rate, net_metering, export_rate)
 	return results
 
 
-def refined_LCEM(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, latitude, longitude, year, stepsize):
+def refined_LCEM(load, latitude, longitude, year, solar_min=0, solar_max=60_000_000, wind_min=0, wind_max=60_000_000, batt_min=0, batt_max=60_000_000, stepsize=5_000_000, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, demand_rate=.02, net_metering=False, export_rate=.000_040):
   weather_ds = get_weather(latitude, longitude, year)
   solar_output_ds = get_solar(weather_ds)
   wind_output_ds = get_wind(weather_ds)
-  results = direct_optimal_mix(load, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, solar_output_ds, wind_output_ds, stepsize)
+  results = direct_optimal_mix(load, solar_output_ds, wind_output_ds, solar_min, solar_max, wind_min, wind_max, batt_min, batt_max, stepsize, solar_rate, wind_rate, batt_rate, grid_rate, demand_rate, net_metering, export_rate)
   y = stepsize
   while y > 100_000:
     new_solar = results[0][1]
     new_wind = results[0][2]
     new_batt = results[0][3]
     z = y * 0.9
-    results = direct_optimal_mix(load, new_solar - z, new_solar + z, new_wind - z, new_wind + z, new_batt - z, new_batt + z, solar_output_ds, wind_output_ds, y / 10)
+    results = direct_optimal_mix(load, solar_output_ds, wind_output_ds, new_solar - z, new_solar + z, new_wind - z, new_wind + z, new_batt - z, new_batt + z, y / 10, solar_rate, wind_rate, batt_rate, grid_rate, demand_rate, net_metering, export_rate)
     y = y / 10
   return results
 
@@ -336,9 +337,15 @@ if __name__ == '__main__':
 	fire.Fire()
 
 
+net_metering = True
+export_rate = 0.000_040 # $ per Watt 
 
-
-
+solar_rate = 0.000_024 # $ per Watt
+wind_rate = 0.000_009 # $ per Watt
+batt_rate = 0.000_055 # $ per Watt
+grid_rate = 0.000_150 # $ per Watt
+demand_rate = 20 # typical demand rate in $ per kW
+demand_rate = demand_rate / 1000 # $ / Watt 
 
 load = "./data/all_loads_vertical.csv"
 weather_ds = get_weather(39.952437, -75.16378, 2019)
@@ -423,7 +430,11 @@ def iterator(params):
   fossil_cost = sum(fossil_cost)
   # fossil_cost = sum(rendf['fossil']) * 9e99
   
-  tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
+  if net_metering == True:
+    resale = sum(rendf['curtailment']) * export_rate
+    tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost + resale
+  if net_metering == False:
+    tot_cost = wind_cost + solar_cost + storage_cost + fossil_cost
 
   return [tot_cost,solar,wind,batt,sum(rendf['fossil'])]
 
@@ -432,6 +443,6 @@ if __name__ == '__main__':
   pool = Pool(processes=10)
   res = []
   res.append(pool.map(iterator,param_list))
-  res[0][0] = res
-  res.sort(key=lambda x:x[0])
-  print(res)
+  print(res[0][0])  
+  # res.sort(key=lambda x:x[0])
+  # print(res)

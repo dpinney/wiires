@@ -3215,5 +3215,5 @@ set maxcontroliter=1000
 calcv
 solve
 !can also use export here for csv formatted outputs.
-show quantity=voltage
-show quantity=powers
+!show quantity=voltage
+!show quantity=powers

@@ -14,7 +14,6 @@ import warnings
 import fire
 import itertools
 from multiprocessing import Pool
-import peak_shaving
 
 
 def float_range(start, stop, step):

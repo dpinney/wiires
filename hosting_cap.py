@@ -205,7 +205,7 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 	if timeseries == False:	
 		for y in tree:
 			if y.get('object','').startswith('load.') and 'daily' in y.keys():
-				tree = dss_manipulation.host_cap_dss_arrange(tree, None)
+				tree = dss_manipulation.host_cap_dss_arrange(tree)
 				break
 	# adds generation at each load 15.6 kW at a time
 	i  = None
@@ -226,11 +226,6 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 		else:
 			cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 			print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
-	# if timeseries == True:
-	# 	ts_tree = dss_manipulation.dss_to_tree('cap_circuit.dss')
-	# 	ts_tree = dss_manipulation.host_cap_dss_arrange(ts_tree, hour)
-	# 	dss_manipulation.tree_to_dss(ts_tree, 'cap_circuit.dss')
-	# host_cap_plot('cap_circuit.dss', cap_dict, figsize=(20,20), output_name='host_cap_plot.png')
 	if save_csv==True:
 		cap_df = pd.DataFrame()
 		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)

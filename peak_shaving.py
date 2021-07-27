@@ -51,28 +51,26 @@ def work(modelDir, inputDict):
 	# list of 12 lists of monthly demands
 	demandByMonth = [[t['power'] for t in dc if t['month']==x] for x in range(12)]
 	monthlyPeakDemand = [max(lDemands) for lDemands in demandByMonth]
-	print(monthlyPeakDemand)
-	battCapacity = cellQuantity * cellCapacity * dodFactor # (100 * 7kW = 700kW)
-	battDischarge = cellQuantity * dischargeRate # (100 * 5kW = 500kW)
-	battCharge = cellQuantity * chargeRate # (100 * 5kW = 500kW)
+	battCapacity = cellQuantity * cellCapacity * dodFactor
+	battDischarge = cellQuantity * dischargeRate 
+	battCharge = cellQuantity * chargeRate 
 
-	SoC = battCapacity # ( = 700kW)
+	SoC = battCapacity 
 	# if dispatchStrategy == 'optimal':
-	ps = [battDischarge] * 12 # [500, 500, 500, 500, 500, ... etc.]
+	ps = [battDischarge] * 12
 	# keep shrinking peak shave (ps) until every month doesn't fully expend the battery
 	while True:
 		SoC = battCapacity # (700kW)
-		incorrect_shave = [False] * 12 # [False, False, False, ... etc.]
+		incorrect_shave = [False] * 12 
 		for row in dc:
 			month = row['month']
 			if not incorrect_shave[month]:
-				powerUnderPeak = monthlyPeakDemand[month] - row['power'] - ps[month] # Hour 0: = 2,100,032.719 - 789,446.4375 - 500 = 1,310,086.2815
-				charge = (min(powerUnderPeak, battCharge, battCapacity - SoC) if powerUnderPeak > 0 # Hour 0: min(1,310,086.2815, 500, 0) = 0
+				powerUnderPeak = monthlyPeakDemand[month] - row['power'] - ps[month] 
+				charge = (min(powerUnderPeak, battCharge, battCapacity - SoC) if powerUnderPeak > 0 
 					else -1 * min(abs(powerUnderPeak), battDischarge, SoC))
-				if charge == -1 * SoC: # Hour 0: -1 * 700 = -700 therefore No
-				# How is this reached? powerUnderPeak must be ≤ 0 (at minimum it can be 0 - battDischarge, or -500kW), battDischarge is 500kW, and powerUnderPeak < SoC < -1(powerUnderPeak). In other words, SoC must drop below battDischarge and powerUnderPeak must be sufficiently negative.  
+				if charge == -1 * SoC: 
 					incorrect_shave[month] = True
-				SoC += charge # Hour 0: 700 + 0 = 700
+				SoC += charge 
 				# SoC = 0 when incorrect_shave[month] == True 
 				row['netpower'] = row['power'] + charge 
 				row['battSoC'] = SoC
@@ -102,7 +100,6 @@ def work(modelDir, inputDict):
 	netByMonth = [[t['netpower'] for t in dc if t['month']==x] for x in range(12)]
 	monthlyPeakNet = [max(net) for net in netByMonth]
 	ps = [h-s for h, s in zip(monthlyPeakDemand, monthlyPeakNet)]
-
 	# Monthly Cost Comparison Table
 	out['monthlyDemand'] = [sum(lDemand)/1000 for lDemand in demandByMonth]
 	out['monthlyDemandRed'] = [t-p for t, p in zip(out['monthlyDemand'], ps)]
@@ -238,8 +235,8 @@ _myDir = os.path.dirname(os.path.abspath(__file__))
 _omfDir = os.path.dirname(_myDir)
 with open(pJoin(_omfDir,'wiires','data','all_loads_vertical.csv')) as f:
 	demand_curve = f.read()
-inputDict = {'cellCapacity':7,'dischargeRate':5,'chargeRate':5,'cellQuantity':100,'demandCharge':20,'cellCost':7140,'retailCost':0.06,'projYears':15,'batteryCycleLife':5000,'discountRate':2.5,'dodFactor':100,'inverterEfficiency':100,'batteryEfficiency':100,'demandCurve':demand_curve}
+inputDict = {'cellCapacity':350,'dischargeRate':250,'chargeRate':250,'cellQuantity':100,'demandCharge':20,'cellCost':7140,'retailCost':0.06,'projYears':15,'batteryCycleLife':5000,'discountRate':2.5,'dodFactor':100,'inverterEfficiency':100,'batteryEfficiency':100,'demandCurve':demand_curve}
 modelDir = './data/'
 test = work(modelDir, inputDict)
-print(test)
+# print(test)
 

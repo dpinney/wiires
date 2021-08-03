@@ -373,6 +373,7 @@ wind_iter = range(wind_min, wind_max, stepsize)
 batt_iter = range(batt_min, batt_max, stepsize)
 param_list = list(itertools.product(solar_iter,wind_iter,batt_iter))
 
+
 def iterator(params):
   solar, wind, batt = params 
   merged_frame = pd.DataFrame({

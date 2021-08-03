@@ -223,9 +223,9 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 			if any(j >= 1.05 for j in maximums):
 				cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 				break				
-		else:
-			cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
-			print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
+			else:
+				cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+				print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
 	if save_csv==True:
 		cap_df = pd.DataFrame()
 		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)

@@ -68,6 +68,7 @@ def work(modelDir, inputDict):
 				powerUnderPeak = monthlyPeakDemand[month] - row['power'] - ps[month] 
 				charge = (min(powerUnderPeak, battCharge, battCapacity - SoC) if powerUnderPeak > 0 
 					else -1 * min(abs(powerUnderPeak), battDischarge, SoC))
+				# print(powerUnderPeak, charge, SoC)
 				if charge == -1 * SoC: 
 					incorrect_shave[month] = True
 				SoC += charge 

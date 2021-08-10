@@ -368,9 +368,9 @@ batt_min = 0
 batt_max = 50_000_000
 stepsize = 5_000_000
 
-solar_iter = range(solar_min, solar_max, stepsize)
-wind_iter = range(wind_min, wind_max, stepsize)
-batt_iter = range(batt_min, batt_max, stepsize)
+solar_iter = float_range(solar_min, solar_max, stepsize)
+wind_iter = float_range(wind_min, wind_max, stepsize)
+batt_iter = float_range(batt_min, batt_max, stepsize)
 param_list = list(itertools.product(solar_iter,wind_iter,batt_iter))
 
 
@@ -439,10 +439,9 @@ def iterator(params):
   return [tot_cost,solar,wind,batt,sum(rendf['fossil'])]
 
 
-if __name__ == '__main__':
-  pool = Pool(processes=10)
-  res = []
-  res.append(pool.map(iterator,param_list))
-  print(res[0][0])  
-  # res.sort(key=lambda x:x[0])
-  # print(res)
+# if __name__ == '__main__':
+#   pool = Pool(processes=8)
+#   res = []
+#   res.append(pool.map(iterator,param_list))
+#   print(res[0][0])  
+

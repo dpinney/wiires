@@ -7,6 +7,8 @@ import opendssdirect as dss
 import math
 import dss_manipulation
 import numpy as np
+import multiprocessing
+from functools import partial
 
 
 dss.Basic.DataPath("./data/")
@@ -193,7 +195,7 @@ def convert_to_hex(rgba_color) :
     return '#%02x%02x%02x' % (red, green, blue)
 
 
-def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output_path = './test', timeseries=False, load_name=None):
+def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output_path = './test', timeseries=False, load_name=None, multiprocess=False, cores=8):
 	tree = dss_manipulation.dss_to_tree(file_path)
 	if load_name != None:
 		load_buses = [y.get('bus1') for y in tree if load_name in y.get('object','')]
@@ -210,32 +212,63 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 	# adds generation at each load 15.6 kW at a time
 	i  = None
 	cap_dict = {}
-	for load in load_buses:
-		print(load)
-		for counter in range(turb_min, turb_max):
-			dg_tree = dss_manipulation.add_turbine(tree, counter, load, turb_kw)
-			dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
-			if timeseries == False:
-				maximums, hour = newQstsPlot('cap_circuit.dss', 60, 1)
-			if timeseries == True:
-				maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
-			print(counter, maximums, hour)
-			if any(j >= 1.05 for j in maximums):
-				cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
-				break				
-			else:
-				cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
-				print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
+	cap_list = []
+	if multiprocess == True:
+		pool = multiprocessing.Pool(processes=cores)
+		func = partial(multiprocessor, turb_min, turb_max, tree, turb_kw, timeseries)
+		print(f'Running multiprocessor {len(load_buses)} times with {cores} cores')
+		cap_list.append(pool.map(func, load_buses))
+	else:
+		for load in load_buses:
+			print(load)
+			for counter in range(turb_min, turb_max):
+				dg_tree = dss_manipulation.add_turbine(tree, counter, load, turb_kw)
+				dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+				if timeseries == False:
+					maximums, hour = newQstsPlot('cap_circuit.dss', 60, 1)
+				if timeseries == True:
+					maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+				print(counter, maximums, hour)
+				if any(j >= 1.05 for j in maximums):
+					cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+					break				
+				else:
+					cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+					print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
 	if save_csv==True:
 		cap_df = pd.DataFrame()
 		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
 		cap_df.to_csv(f'{output_path}.csv')
+	print(cap_list)
+	return 
 	print(cap_dict)
 	return cap_dict
 
 
-def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50):
-	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name)
+def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
+	print("\n")
+	print(load_buses)
+	for counter in range(turb_min, turb_max):
+		dg_tree = dss_manipulation.add_turbine(tree, counter, load_buses, turb_kw)
+		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+		if timeseries == False:
+			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 1)
+		if timeseries == True:
+			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+		print(counter, maximums, hour)
+		if any(j >= 1.05 for j in maximums):
+			# cap_dict[load_buses] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+			print(f"Load reached hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
+			return (counter, turb_kw, turb_kw*counter, hour, maximums)				
+		else:
+			# cap_dict[load_buses] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+			# print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
+			print(f"Load did not reach hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
+			return (counter, turb_kw, turb_kw*counter, hour, maximums)
+
+
+def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=8):
+	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name, multiprocess, cores)
 	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 
 
@@ -368,17 +401,9 @@ def _getByName(tree, name):
     return matches[0]
 
 
-if __name__ == '__main__':
-	fire.Fire()
+if __name__ == "__main__":
+	get_host_cap('lehigh.dss', 1, 100, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=8)
 
 
-# cap_dict = host_cap_data('wto_buses_xy.dss', 1, 100, 1_000, csv=True, snapshot_or_timeseries='timeseries')
-# cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 21, 'maximums': [1.1033416666666667, 0.9913041666666668, 1.073275]}, '634.1': {'counter': 11, 'turb_kw': 100000, 'gen_added': 1100000, 'hour': 23, 'maximums': [1.0522093862815884, 1.0085458333333335, 1.0210583333333334]}, '645.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '646.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '692.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 22, 'maximums': [1.1034291666666667, 0.9913791666666666, 1.073275]}, '675.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 22, 'maximums': [1.1443708333333333, 1.0222208333333334, 1.0995916666666667]}, '611.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '652.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 10000000, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '670.1': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.2': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100000, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}}
-# test_cap_dict = {'671.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 10, 'hour': 21, 'maximums': [1.1033416666666667, 0.9913041666666668, 1.073275]}, '634.1': {'counter': 11, 'turb_kw': 100000, 'gen_added': 20, 'hour': 23, 'maximums': [1.0522093862815884, 1.0085458333333335, 1.0210583333333334]}, '645.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 30, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '646.2': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 40, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '692.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 50, 'hour': 22, 'maximums': [1.1034291666666667, 0.9913791666666666, 1.073275]}, '675.1.2.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 60, 'hour': 22, 'maximums': [1.1443708333333333, 1.0222208333333334, 1.0995916666666667]}, '611.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 70, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '652.3': {'counter': '> 100', 'turb_kw': 100000, 'gen_added': 80, 'hour': 4, 'maximums': [1.0062958333333334, 1.0138125, 1.0194208333333334]}, '670.1': {'counter': 1, 'turb_kw': 100000, 'gen_added': 90, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.2': {'counter': 1, 'turb_kw': 100000, 'gen_added': 100, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}, '670.3': {'counter': 1, 'turb_kw': 100000, 'gen_added': 110, 'hour': 23, 'maximums': [1.0507875, 0.9864291666666666, 1.0384]}}
-# cap_df = pd.DataFrame()
-# cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
-# cap_df.to_csv('cap_df.csv')
-# host_cap_plot('lehigh.dss', cap_dict, figsize=(20,20), output_path='lehigh_host_cap.png', show_labels=True, node_size=500, font_size=25)
-
-
-# get_host_cap('wto_buses_xy.dss', 1, 100, 10_000, save_csv=True, timeseries=False, load_name=None, figsize=(20,20), output_path='./wto_test', show_labels=True, node_size=500, font_size=50)
+# if __name__ == '__main__':
+	# fire.Fire()

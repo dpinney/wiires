@@ -11,7 +11,7 @@ import multiprocessing
 from functools import partial
 
 
-dss.Basic.DataPath("./data/")
+# dss.Basic.DataPath("./data/")
 
 
 def runDssCommand(dsscmd):
@@ -218,16 +218,17 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 		func = partial(multiprocessor, turb_min, turb_max, tree, turb_kw, timeseries)
 		print(f'Running multiprocessor {len(load_buses)} times with {cores} cores')
 		cap_list.append(pool.map(func, load_buses))
+		return cap_list
 	else:
 		for load in load_buses:
 			print(load)
 			for counter in range(turb_min, turb_max):
 				dg_tree = dss_manipulation.add_turbine(tree, counter, load, turb_kw)
-				dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+				dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
 				if timeseries == False:
-					maximums, hour = newQstsPlot('cap_circuit.dss', 60, 1)
+					maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
 				if timeseries == True:
-					maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+					maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
 				print(counter, maximums, hour)
 				if any(j >= 1.05 for j in maximums):
 					cap_dict[load] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
@@ -235,14 +236,11 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 				else:
 					cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 					print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
-	if save_csv==True:
-		cap_df = pd.DataFrame()
-		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
-		cap_df.to_csv(f'{output_path}.csv')
-	print(cap_list)
-	return 
-	print(cap_dict)
-	return cap_dict
+		if save_csv==True:
+			cap_df = pd.DataFrame()
+			cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
+			cap_df.to_csv(f'{output_path}.csv')
+		return cap_dict
 
 
 def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
@@ -250,11 +248,11 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 	print(load_buses)
 	for counter in range(turb_min, turb_max):
 		dg_tree = dss_manipulation.add_turbine(tree, counter, load_buses, turb_kw)
-		dss_manipulation.tree_to_dss(dg_tree, 'cap_circuit.dss')
+		dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
 		if timeseries == False:
-			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 1)
+			maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
 		if timeseries == True:
-			maximums, hour = newQstsPlot('cap_circuit.dss', 60, 8760)
+			maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
 		print(counter, maximums, hour)
 		if any(j >= 1.05 for j in maximums):
 			# cap_dict[load_buses] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
@@ -269,14 +267,141 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 
 def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=8):
 	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name, multiprocess, cores)
+	if type(cap_dict) is dict: 
+		print("our beloved cap_dict", cap_dict)
+	if type(cap_dict) is list:
+		print("honorable cap list", cap_list)
+	return
 	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 
 
+# def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, actions={}):
+# 	''' Use monitor objects to generate voltage values for a timeseries powerflow. '''
+# 	dssFileLoc = os.path.dirname(os.path.abspath(filePath))
+# 	volt_coord = runDSS(filePath)
+# 	runDssCommand(f'set datapath="{dssFileLoc}"')
+# 	# Attach Monitors
+# 	tree = dss_manipulation.dss_to_tree(filePath)
+# 	mon_names = []
+# 	circ_name = 'NONE'
+# 	base_kvs = pd.DataFrame()
+# 	for ob in tree:
+# 		obData = ob.get('object','NONE.NONE')
+# 		obType, name = obData.split('.', 1)
+# 		mon_name = f'mon{obType}-{name}'
+# 		if obData.startswith('circuit.'):
+# 			circ_name = name
+# 		elif ob.get('object','').startswith('load.'):
+# 			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
+# 			mon_names.append(mon_name)
+# 			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':[name]})
+# 			base_kvs = base_kvs.append(new_kv)
+# 	# Run DSS
+# 	runDssCommand(f'set mode=yearly stepsize={stepSizeInMinutes}m ')
+# 	if actions == {}:
+# 		# Run all steps directly.
+# 		runDssCommand(f'set number={numberOfSteps}')
+# 		runDssCommand('solve')
+# 	else:
+# 		# Actions defined, run them at the appropriate timestep.
+# 		runDssCommand(f'set number=1')
+# 		for step in range(1, numberOfSteps+1):
+# 			action = actions.get(step)
+# 			if action != None:
+# 				print(f'Step {step} executing:', action)
+# 				runDssCommand(action)
+# 			runDssCommand('solve')
+# 	# Export all monitors
+# 	for name in mon_names:
+# 		runDssCommand(f'export monitors monitorname={name}')
+# 	# Aggregate monitors
+# 	all_load_df = pd.DataFrame()
+# 	for name in mon_names:
+# 		csv_path = f'{dssFileLoc}/{circ_name}_Mon_{name}.csv'
+# 		df = pd.read_csv(f'{circ_name}_Mon_{name}.csv')
+# 		if name.startswith('monload-'):
+# 			# reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
+# 			# three phase print out should work fine as is
+# 			ob_name = name.split('-')[1]
+# 			the_object = _getByName(tree, ob_name)
+# 			# print("the_object:", the_object)
+# 			# create phase list, removing neutral phases
+# 			phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
+# 			# print("phase_ids:", phase_ids)
+# 			# print("headings list:", df.columns)
+# 			if phase_ids == ['1']:
+# 				df[[' V2']] = np.NaN
+# 				df[[' V3']] = np.NaN
+# 			elif phase_ids == ['2']:
+# 				df[[' V2']] = df[[' V1']]
+# 				df[[' V1']] = np.NaN
+# 				df[[' V3']] = np.NaN
+# 			elif phase_ids == ['3']:
+# 				df[[' V3']] = df[[' V1']]
+# 				df[[' V1']] = np.NaN
+# 				df[[' V2']] = np.NaN
+# 			# print("df after phase reassignment:")
+# 			# print(df.head(10))
+# 			df['Name'] = ob_name
+# 			all_load_df = pd.concat([all_load_df, df], ignore_index=True, sort=False)
+# 			# # pd.set_option('display.max_columns', None)
+# 		if not keepAllFiles:
+# 			os.remove(csv_path)
+# 	# Collect switching actions
+# 	for key, ob in actions.items():
+# 		if ob.startswith('open'):
+# 			switch_ob = ob.split()
+# 			ob_name = switch_ob[1][7:]
+# 			new_row = {'hour':key, 't(sec)':0.0,'Tap(pu)':1,'Type':'Switch','Name':ob_name}
+# 			all_control_df = all_control_df.append(new_row, ignore_index=True)
+# 	for key, ob in actions.items():
+# 		if ob.startswith('close'):
+# 			switch_ob = ob.split()
+# 			ob_name = switch_ob[1][7:]
+# 			new_row = {'hour':key, 't(sec)':0.0,'Tap(pu)':1,'Type':'Switch','Name':ob_name}
+# 			all_control_df = all_control_df.append(new_row, ignore_index=True)
+# 	# Write final aggregate
+# 	if not all_load_df.empty:
+# 		all_load_df.sort_values(['Name','hour'], inplace=True)
+# 		all_load_df.columns = all_load_df.columns.str.replace(r'[ "]','',regex=True)
+# 		all_load_df = all_load_df.join(base_kvs.set_index('Name'), on='Name')
+# 		# TODO: insert ANSI bands here based on base_kv?  How to not display two bands per load with the appended CSV format?
+# 		all_load_df['V1(PU)'] = all_load_df['V1'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
+# 		# HACK: reassigning 0V to "NaN" as below does not removes 0V phases but could impact 2 phase systems
+# 		#all_load_df['V2'][(all_load_df['VAngle2']==0) & (all_load_df['V2']==0)] = "NaN"
+# 		all_load_df['V2(PU)'] = all_load_df['V2'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
+# 		all_load_df['V3(PU)'] = all_load_df['V3'].astype(float) / (all_load_df['kv'].astype(float) * 1000.0)
+# 		all_load_df.to_csv(f'{dssFileLoc}/timeseries_load.csv', index=False)
+# 		PU1 = all_load_df['V1(PU)']
+# 		PU2 = all_load_df['V2(PU)']
+# 		PU3 = all_load_df['V3(PU)']
+# 		maximums = all_load_df[['V1(PU)','V2(PU)','V3(PU)']].max()
+# 		max_v1 = all_load_df['V1(PU)'].max()
+# 		index1 = PU1[PU1 == maximums[0]].index[0]
+# 		hour1 = all_load_df.loc[index1, 'hour']
+		
+# 		max_v2 = all_load_df['V2(PU)'].max()
+# 		index2 = PU2[PU2 == maximums[1]].index[0]
+# 		hour2 = all_load_df.loc[index2, 'hour']
+
+# 		max_v3 = all_load_df['V3(PU)'].max()
+# 		index3 = PU3[PU3 == maximums[2]].index[0]
+# 		hour3 = all_load_df.loc[index3, 'hour']
+
+# 		hours = hour1, hour2, hour3
+
+# 		maximums_list = maximums.tolist()
+# 		return maximums_list, hours[maximums_list.index(max(maximums_list))]
+
+
 def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, actions={}):
-	''' Use monitor objects to generate voltage values for a timeseries powerflow. '''
+	''' QSTS with native opendsscmd binary to avoid segfaults in opendssdirect. '''
 	dssFileLoc = os.path.dirname(os.path.abspath(filePath))
-	volt_coord = runDSS(filePath)
-	runDssCommand(f'set datapath="{dssFileLoc}"')
+	dss_run_file = ''
+	# volt_coord = runDSS(filePath)
+	dss_run_file += f'redirect {dssFileLoc}/cap_circuit.dss\n'
+	dss_run_file += f'set datapath="{dssFileLoc}"\n'
+	dss_run_file += f'calcvoltagebases\n'
 	# Attach Monitors
 	tree = dss_manipulation.dss_to_tree(filePath)
 	mon_names = []
@@ -289,59 +414,66 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 		if obData.startswith('circuit.'):
 			circ_name = name
 		elif ob.get('object','').startswith('load.'):
-			runDssCommand(f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0')
+			dss_run_file += f'new object=monitor.{mon_name} element={obType}.{name} terminal=1 mode=0\n'
 			mon_names.append(mon_name)
-			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':[name]})
+			new_kv = pd.DataFrame({'kv':[float(ob.get('kv',1.0))],'Name':['monload-' + name]})
 			base_kvs = base_kvs.append(new_kv)
 	# Run DSS
-	runDssCommand(f'set mode=yearly stepsize={stepSizeInMinutes}m ')
+	dss_run_file += f'set mode=yearly stepsize={stepSizeInMinutes}m \n'
 	if actions == {}:
 		# Run all steps directly.
-		runDssCommand(f'set number={numberOfSteps}')
-		runDssCommand('solve')
+		dss_run_file += f'set number={numberOfSteps}\n'
+		dss_run_file += 'solve\n'
 	else:
 		# Actions defined, run them at the appropriate timestep.
-		runDssCommand(f'set number=1')
+		dss_run_file += f'set number=1\n'
 		for step in range(1, numberOfSteps+1):
 			action = actions.get(step)
 			if action != None:
 				print(f'Step {step} executing:', action)
-				runDssCommand(action)
-			runDssCommand('solve')
+				dss_run_file += action
+			dss_run_file += 'solve\n'
 	# Export all monitors
 	for name in mon_names:
-		runDssCommand(f'export monitors monitorname={name}')
+		dss_run_file += f'export monitors monitorname={name}\n'
+	# Write runner file and run.
+	with open(f'{dssFileLoc}/dss_run_file.dss', 'w') as run_file:
+		run_file.write(dss_run_file)
+	os.system(f'opendsscmd {dssFileLoc}/dss_run_file.dss')
 	# Aggregate monitors
 	all_load_df = pd.DataFrame()
 	for name in mon_names:
 		csv_path = f'{dssFileLoc}/{circ_name}_Mon_{name}.csv'
-		df = pd.read_csv(f'{circ_name}_Mon_{name}.csv')
+		df = pd.read_csv(f'data/{circ_name}_Mon_{name}.csv')
 		if name.startswith('monload-'):
-			# reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
-			# three phase print out should work fine as is
-			ob_name = name.split('-')[1]
-			the_object = _getByName(tree, ob_name)
-			# print("the_object:", the_object)
-			# create phase list, removing neutral phases
-			phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
-			# print("phase_ids:", phase_ids)
-			# print("headings list:", df.columns)
-			if phase_ids == ['1']:
-				df[[' V2']] = np.NaN
-				df[[' V3']] = np.NaN
-			elif phase_ids == ['2']:
-				df[[' V2']] = df[[' V1']]
-				df[[' V1']] = np.NaN
-				df[[' V3']] = np.NaN
-			elif phase_ids == ['3']:
-				df[[' V3']] = df[[' V1']]
-				df[[' V1']] = np.NaN
-				df[[' V2']] = np.NaN
-			# print("df after phase reassignment:")
-			# print(df.head(10))
-			df['Name'] = ob_name
+			# # TODO: TEST THAT the commented out phasing code below works after new_newQSTSplot() is updated
+			# # reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
+			# # three phase print out should work fine as is
+			# ob_name = name.split('-')[1]
+			# # print("ob_name:", ob_name)
+			# the_object = _getByName(tree, ob_name)
+			# # print("the_object:", the_object)
+			# # create phase list, removing neutral phases
+			# phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
+			# # print("phase_ids:", phase_ids)
+			# # print("headings list:", df.columns)
+			# if phase_ids == ['1']:
+			# 	df[[' V2']] = np.NaN
+			# 	df[[' V3']] = np.NaN
+			# elif phase_ids == ['2']:
+			# 	df[[' V2']] = df[[' V1']]
+			# 	df[[' V1']] = np.NaN
+			# 	df[[' V3']] = np.NaN
+			# elif phase_ids == ['3']:
+			# 	df[[' V3']] = df[[' V1']]
+			# 	df[[' V1']] = np.NaN
+			# 	df[[' V2']] = np.NaN
+			# # print("df after phase reassignment:")
+			# # print(df.head(10))
+			df['Name'] = name
 			all_load_df = pd.concat([all_load_df, df], ignore_index=True, sort=False)
-			# # pd.set_option('display.max_columns', None)
+			#pd.set_option('display.max_columns', None)
+			#print("all_load_df:", df.head(50))
 		if not keepAllFiles:
 			os.remove(csv_path)
 	# Collect switching actions
@@ -357,7 +489,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 			ob_name = switch_ob[1][7:]
 			new_row = {'hour':key, 't(sec)':0.0,'Tap(pu)':1,'Type':'Switch','Name':ob_name}
 			all_control_df = all_control_df.append(new_row, ignore_index=True)
-	# Write final aggregate
+	# Write final aggregates
 	if not all_load_df.empty:
 		all_load_df.sort_values(['Name','hour'], inplace=True)
 		all_load_df.columns = all_load_df.columns.str.replace(r'[ "]','',regex=True)
@@ -402,7 +534,8 @@ def _getByName(tree, name):
 
 
 if __name__ == "__main__":
-	get_host_cap('lehigh.dss', 1, 100, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=8)
+	get_host_cap('./data/lehigh.dss', 1, 5, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', 
+		show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 
 
 # if __name__ == '__main__':

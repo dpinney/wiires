@@ -1,3 +1,8 @@
+'''
+Attempt to use SciPy optimize to converge to lowest cost energy mix 
+Thomas Jankovic, May 2021
+'''
+
 from scipy.optimize import minimize 
 import plotly.graph_objects as go
 import pandas as pd

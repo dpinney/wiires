@@ -386,7 +386,7 @@ def new_renewables(solar_output_ds, solar_capacity, wind_output_ds, wind_capacit
 
 
 def peak_shaver(demand_after_renewables, battCapacity, battDischarge, battCharge):
-	# NOTE: internal efficiency is 97.5% and inverter efficiency is 96% on charge and discharge
+	# NOTE: Battery internal efficiency is 97.5%. Inverter efficiency is 96% on both charge and discharge
 	battDischarge = battDischarge * .96 * .975
 	battCharge = battCharge * .96 
 
@@ -438,7 +438,7 @@ def peak_shaver(demand_after_renewables, battCapacity, battDischarge, battCharge
 
 
 def batt_pusher(demand_after_renewables, battCapacity, battDischarge, battCharge):
-	# NOTE: internal efficiency is 97.5% and inverter efficiency is 96% on charge and discharge
+	# NOTE: Battery internal efficiency is 97.5%. Inverter efficiency is 96% on both charge and discharge
 	battDischarge = battDischarge * .96 * .975
 	battCharge = battCharge * .96 
 
@@ -473,7 +473,8 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, so
 
 	batt_rate, inverter_rate = batt_and_inverter
 
-	# NOTE: wind and solar federal ITC is 26%
+	# Capital expenditures
+	# NOTE: wind and solar federal ITC is 26% (Omitted due to REopt limitations)
 	solar_cost = solar_cap * (solar_rate/1000) # * 0.74 # $/kW -> $/W
 	wind_cost = wind_cap * (wind_rate /1000) # * 0.74
 	storage_cost = batt_cap * (batt_rate/1000)
@@ -545,7 +546,6 @@ def multiprocessor(load, solar_output_ds, wind_output_ds, peak_shave, battDischa
 		fossil_ds, curtailment_ds, charge_ds, capacity_times_cycles = peak_shaver(demand_after_renewables, battCapacity, battDischarge, battCharge)
 	else:
 		fossil_ds, curtailment_ds, charge_ds, capacity_times_cycles = batt_pusher(demand_after_renewables, battCapacity, battDischarge, battCharge)
-	# tot_cost = cost_calculator(fossil_ds, curtailment_ds, new_solar, new_wind, capacity_times_cycles, solar_rate, wind_rate, batt_rate, grid_rate, TOU, demand_rate, net_metering, export_rate)
 	tot_cost = cost_calculator(fossil_ds, curtailment_ds, solar, wind, batt, solar_rate, wind_rate, batt_rate, grid_rate, TOU, demand_rate, net_metering, export_rate)
 	return tot_cost, solar, wind, batt, sum(fossil_ds)
 

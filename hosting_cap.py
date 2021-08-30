@@ -254,7 +254,7 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 				maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
 			except:
 				bug = open('./data/cap_circuit.dss')
-				fixer = open("./data/bug_file.dss", "a")
+				fixer = open("bug_file.dss", "w")
 				fixer.write(bug.read())
 				bug.close()
 				fixer.close()
@@ -265,12 +265,14 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 		if any(j >= 1.05 for j in maximums):
 			# cap_dict[load_buses] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 			print(f"Load reached hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
-			return (counter, turb_kw, turb_kw*counter, hour, maximums)				
+			# return (counter, turb_kw, turb_kw*counter, hour, maximums)
+			return {'load':load_buses,'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}				
 		else:
 			# cap_dict[load_buses] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 			# print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
 			print(f"Load did not reach hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
-			return (counter, turb_kw, turb_kw*counter, hour, maximums)
+			# return (counter, turb_kw, turb_kw*counter, hour, maximums)
+			return {'load':load_buses,'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 
 
 def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=8):
@@ -278,7 +280,7 @@ def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeser
 	if type(cap_dict) is dict: 
 		print("cap_dict", cap_dict)
 	if type(cap_dict) is list:
-		print("cap list", cap_list)
+		print("cap list", cap_dict)
 	return
 	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 

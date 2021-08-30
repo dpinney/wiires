@@ -99,11 +99,10 @@ time
 Name: feedin_power_plant, Length: 8760, dtype: float64
 
 >>> # find the lowest cost energy mix using grid search for a year of hourly load shapes given a location and year
->>> # function accepts loads (csv or list), max solar, wind, and storage capacity in Watts, latitude, longitude, year, and step size for grid search
->>> # solar, wind, and grid electricity costs as well as demand charge are preset but can be changed in code
->>> LCEM = wiires.LCEM.optimal_mix("./loads.csv", 60_000_000, 60_000_000, 60_000_000, 39.952437, -75.16378, 2019, 5_000_000)
->>> LCEM
-[792.3018640684181, 10000, 10000, 55000, 26211.31538862757]
+>>> # function accepts loads (csv or list), coordinates, year, solar/wind/battery capacity minimums/maximums/step sizes, the option to use battery power to shave peaks, a battery discharge and charge rate (inverter capacity), quantity of battery cells, depth of discharge percentage, solar/wind/battery/inverter capital rates in $/kW of capacity, a grid rate in $/kWh, the option to use a csv of Time of Use rates instead of a flat grid charge, a demand charge in $/kW, the option to sell excess renewable generation back to the grid, an export rate in $/kWh, the option to run a refined grid search recursively, the option to use Python multiprocessing, a number of cores to run multiprocessing with, the option to output a graph of the final optimized energy mix, the option to output a csv of a cost breakdown, and an output path for the optional csv. 
+
+>>> if __name__ == "__main__":
+>>>     wiires.LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='demonstration_csv')
 
 >>> # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
 >>> df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./loads.csv", 10_000_000, 10_000_000, 55_000_000, 39.952437, -75.16378, 2019)
@@ -121,11 +120,6 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 792.3018640684181
 >>> fossil_total
 26211.31538862757
-
->>> # a refined grid search gets the lowest cost energy mix down to the nearest Watt of capacity 
->>> ref_mix = wiires.LCEM.refined_LCEM('./loads.csv', 0, 60_000, 0, 60_000, 0, 60_000, 39.952437, -75.16378, 2019, 10_000)
->>> ref_mix[0]
-[787.9182973867388, 410.0, 3480.0, 0.0, 9547724.910232382]
 
 >>> # use SciPy optimization to find the lowest cost energy mix
 >>> # outputs total cost in dollars, solar, wind, and storage capacity in Watts, and grid electricity use in Wh

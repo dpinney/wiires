@@ -122,9 +122,11 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 >>> # – an output path for the optional csv. 
 
 >>> if __name__ == "__main__":
->>>     wiires.LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000,
-peak_shave=True, dischargeRate=108300, chargeRate=108300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420,
-grid_rate=0.11, TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='demonstration_csv')
+>>>     wiires.LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 
+60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, 
+cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, 
+TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, 
+show_mix=True, csv=True, output_path='demonstration_csv')
 
 >>> # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
 >>> df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./loads.csv", 10_000_000, 10_000_000, 55_000_000, 39.952437, -75.16378, 2019)

@@ -260,7 +260,7 @@ def new_demand(load, new_solar, new_wind):
 # 	return tot_cost
 
 
-def mix_graph(load, latitude, longitude, year, solar_capacity, wind_capacity, cellCapacity, peak_shave=False, dischargeRate=250, chargeRate=250, cellQuantity=100, dodFactor=100):
+def mix_graph(load, latitude, longitude, year, solar_capacity, wind_capacity, cellCapacity, peak_shave=False, dischargeRate=250, chargeRate=250, cellQuantity=100, dodFactor=100, csv=False, output_path='test'):
 	# note: .csv must contain one column of 8760 values 
 	if isinstance(load, str) == True:
 		if load.endswith('.csv'):
@@ -298,12 +298,14 @@ def mix_graph(load, latitude, longitude, year, solar_capacity, wind_capacity, ce
 					legend = plotly_horiz_legend
 			)
 	)
+	if csv == True:
+		cost_calculator(fossil, curtailment, solar_capacity, wind_capacity, capacity_times_cycles, 1600, 2000, (840,420), 0.13, None, 18, True, 0.034, True, output_path)
 	return mix_chart.show()
 
 
 def LCEM(load, latitude, longitude, year, solar_min, solar_max, solar_step, wind_min, wind_max, wind_step, batt_min, batt_max, batt_step, peak_shave=False, 
 	dischargeRate=250, chargeRate=250, cellQuantity=100, dodFactor=100, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, TOU=None, 
-	demand_rate=.02, net_metering=False, export_rate=.000_040, refined_grid_search=False, multiprocess=False, cores=8, show_mix=True):
+	demand_rate=.02, net_metering=False, export_rate=.000_040, refined_grid_search=False, multiprocess=False, cores=8, show_mix=True, csv=True, output_path='test'):
 	weather_ds = get_weather(latitude, longitude, year)
 	solar_output_ds = get_solar(weather_ds)
 	wind_output_ds = get_wind(weather_ds)
@@ -341,7 +343,7 @@ def LCEM(load, latitude, longitude, year, solar_min, solar_max, solar_step, wind
 					tot_cost = cost_calculator(fossil_ds, curtailment_ds, new_solar, new_wind, capacity_times_cycles, solar_rate, wind_rate, batt_rate, grid_rate, TOU, demand_rate, net_metering, export_rate)
 					results.append([tot_cost, solar, wind, batt, sum(fossil_ds)])
 	results.sort(key=lambda x:x[0])
-	print("LCEM iteration results:", results)
+	print("LCEM iteration results:", results[0:20])
 	if refined_grid_search == True:
 		x, y, z = solar_step, wind_step, batt_step
 		while x > 1_000 and y > 1_000 and z > 1_000:
@@ -355,7 +357,7 @@ def LCEM(load, latitude, longitude, year, solar_min, solar_max, solar_step, wind
 			print(" Finshed recursive LCEM iteration")
 			x, y, z = x / 10, y / 10, z / 10
 	if show_mix == True:
-		mix_graph(load, latitude, longitude, year, results[0][1], results[0][2], results[0][3], peak_shave, dischargeRate, chargeRate, cellQuantity, dodFactor)
+		mix_graph(load, latitude, longitude, year, results[0][1], results[0][2], results[0][3], peak_shave, dischargeRate, chargeRate, cellQuantity, dodFactor, csv, output_path)
 	return results
 
 
@@ -469,20 +471,21 @@ def batt_pusher(demand_after_renewables, battCapacity, battDischarge, battCharge
 	return mix_df['fossil'], mix_df['curtailment'], mix_df['charge'], capacity_times_cycles
 
 
-def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, solar_rate=1600, wind_rate=2000, batt_and_inverter=(840, 420), grid_rate=0.11, TOU=None, demand_rate=15, net_metering=False, export_rate=0.034): 
-
+def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, solar_rate=1600, wind_rate=2000, batt_and_inverter=(840, 420), grid_rate=0.11, TOU=None, demand_rate=15, net_metering=False, export_rate=0.034, csv=False, output_path='test'): 
 	batt_rate, inverter_rate = batt_and_inverter
+	inverter_cap = 108300
 
 	# Capital expenditures
 	# NOTE: wind and solar federal ITC is 26% (Omitted due to REopt limitations)
 	solar_cost = solar_cap * (solar_rate/1000) # * 0.74 # $/kW -> $/W
 	wind_cost = wind_cap * (wind_rate /1000) # * 0.74
 	storage_cost = batt_cap * (batt_rate/1000)
-	inverter_cost = 133900 * (inverter_rate/1000) 
+	# NOTE: inverter capacity below is based on REopt output on a case by case basis
+	inverter_cost = inverter_cap * (inverter_rate/1000) 
 
 	# 10 year replacement cost (batt replacement rate is 200 $/kWh, inverter replacement rate is 410 $/kW) 
-	storage_cost += batt_cap * (200/1000) # $/kWh -> $/Wh
-	inverter_cost += 133900 * (410/1000) # $/kWh -> $/Wh
+	new_storage_cost = storage_cost + batt_cap * (200/1000) # $/kWh -> $/Wh
+	new_inverter_cost = inverter_cost + inverter_cap * (410/1000) # $/kWh -> $/Wh
 
 	# O&M costs (solar and wind capacities are in W and OM rates are per kW)
 	solar_OM = solar_cap * (16/1000) * 25
@@ -523,17 +526,44 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, so
 
 		fossil_cost_list = []
 		for rate in escalation_list:
-			demand_charges = [rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
-			fossil_cost_list.append(sum(demand_charges))
+			monthly_totals = [rate * sum(mon_dem) + demand_rate*max(mon_dem) for mon_dem in monthly_demands]
+			fossil_cost_list.append(sum(monthly_totals))
 		fossil_cost = sum(fossil_cost_list)
 
 	if net_metering == True:
 		export_rate = export_rate / 1000 # $/kWh -> $/Wh
 		resale = sum(curtailment_ds) * export_rate * 25 # 25 years of net metering assuming no change to export rate and identical curtailment each year 
-		tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost + solar_OM + wind_OM + resale
+		tot_cost = solar_cost + wind_cost + new_storage_cost + new_inverter_cost + fossil_cost + solar_OM + wind_OM + resale
 	else:
-		tot_cost = solar_cost + wind_cost + storage_cost + fossil_cost + solar_OM + wind_OM
+		tot_cost = solar_cost + wind_cost + new_storage_cost + new_inverter_cost + fossil_cost + solar_OM + wind_OM
 
+	if csv == True: 
+		cost_dict = {}
+		cost_dict['tot_cost'] = tot_cost
+		cost_dict['solar capacity (W)'] = solar_cap
+		cost_dict['wind capacity (W)'] = wind_cap
+		cost_dict['battery capacity (Wh)'] = batt_cap
+		cost_dict['inverter capacity (W)'] = inverter_cap
+		cost_dict['grid electricity (Wh)'] = sum(fossil_ds)
+		cost_dict['solar_cost'] = solar_cost
+		cost_dict['wind_cost'] = wind_cost
+		cost_dict['storage_cost'] = storage_cost
+		cost_dict['inverter_cost'] = inverter_cost
+		cost_dict['storage cost after replacement'] = new_storage_cost
+		cost_dict['inverter cost after replacement'] = new_inverter_cost
+		cost_dict['fossil_cost'] = fossil_cost
+		cost_dict['solar_OM'] = solar_OM
+		cost_dict['wind_OM'] = wind_OM 
+		cost_dict['grid rates in 25 years'] = escalation_list
+		cost_dict['12 peak demands'] = [max(mon_dem) for mon_dem in monthly_demands]
+		cost_dict['12 peak demand charges'] = [demand_rate*max(mon_dem) for mon_dem in monthly_demands]
+		cost_dict['12 grid charges'] = [rate * sum(mon_dem) for mon_dem in monthly_demands]
+		if net_metering == True:
+			cost_dict['1 year of curtailment export'] = sum(curtailment_ds) * export_rate
+		print(cost_dict)
+		cost_df = pd.DataFrame([cost_dict])
+		# cost_df = cost_df.from_dict(cost_dict, orient='columns', dtype=None, columns=None)
+		cost_df.to_csv(f'{output_path}.csv')
 	return tot_cost
 
 
@@ -554,6 +584,6 @@ if __name__ == "__main__":
 	# LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 5_000_001, 5_000_000, 0, 5_000_001, 5_000_000, 0, 10_001, 10_000, peak_shave=False, 
 	# 	dischargeRate=100, chargeRate=100, cellQuantity=100, dodFactor=100, solar_rate=.000_024, wind_rate=.000_009, batt_rate=.000_055, grid_rate=.000_070, 
 	# 	TOU=None, demand_rate=.02, net_metering=False, export_rate=.000_040, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True)
-    LCEM('data/all_loads_vertical.csv', 32.6056805, -114.572058, 2019, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, peak_shave=True, 
-    	dischargeRate=133900, chargeRate=133900, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=(840, 420), grid_rate=0.11, 
-    	TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True)
+    LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, peak_shave=True, 
+    	dischargeRate=108300, chargeRate=108300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=(840, 420), grid_rate=0.11, 
+    	TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='philly_optimized_inverter')

@@ -250,7 +250,15 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 		dg_tree = dss_manipulation.add_turbine(tree, counter, load_buses, turb_kw)
 		dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
 		if timeseries == False:
-			maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
+			try:
+				maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
+			except:
+				bug = open('./data/cap_circuit.dss')
+				fixer = open("./data/bug_file.dss", "a")
+				fixer.write(bug.read())
+				bug.close()
+				fixer.close()
+				return
 		if timeseries == True:
 			maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
 		print(counter, maximums, hour)
@@ -268,9 +276,9 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=8):
 	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name, multiprocess, cores)
 	if type(cap_dict) is dict: 
-		print("our beloved cap_dict", cap_dict)
+		print("cap_dict", cap_dict)
 	if type(cap_dict) is list:
-		print("honorable cap list", cap_list)
+		print("cap list", cap_list)
 	return
 	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 
@@ -314,39 +322,39 @@ def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeser
 # 	# Export all monitors
 # 	for name in mon_names:
 # 		runDssCommand(f'export monitors monitorname={name}')
-# 	# Aggregate monitors
-# 	all_load_df = pd.DataFrame()
-# 	for name in mon_names:
-# 		csv_path = f'{dssFileLoc}/{circ_name}_Mon_{name}.csv'
-# 		df = pd.read_csv(f'{circ_name}_Mon_{name}.csv')
-# 		if name.startswith('monload-'):
-# 			# reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
-# 			# three phase print out should work fine as is
-# 			ob_name = name.split('-')[1]
-# 			the_object = _getByName(tree, ob_name)
-# 			# print("the_object:", the_object)
-# 			# create phase list, removing neutral phases
-# 			phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
-# 			# print("phase_ids:", phase_ids)
-# 			# print("headings list:", df.columns)
-# 			if phase_ids == ['1']:
-# 				df[[' V2']] = np.NaN
-# 				df[[' V3']] = np.NaN
-# 			elif phase_ids == ['2']:
-# 				df[[' V2']] = df[[' V1']]
-# 				df[[' V1']] = np.NaN
-# 				df[[' V3']] = np.NaN
-# 			elif phase_ids == ['3']:
-# 				df[[' V3']] = df[[' V1']]
-# 				df[[' V1']] = np.NaN
-# 				df[[' V2']] = np.NaN
-# 			# print("df after phase reassignment:")
-# 			# print(df.head(10))
-# 			df['Name'] = ob_name
-# 			all_load_df = pd.concat([all_load_df, df], ignore_index=True, sort=False)
-# 			# # pd.set_option('display.max_columns', None)
-# 		if not keepAllFiles:
-# 			os.remove(csv_path)
+	# # Aggregate monitors
+	# all_load_df = pd.DataFrame()
+	# for name in mon_names:
+	# 	csv_path = f'{dssFileLoc}/{circ_name}_Mon_{name}.csv'
+	# 	df = pd.read_csv(f'{circ_name}_Mon_{name}.csv')
+	# 	if name.startswith('monload-'):
+	# 		# reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
+	# 		# three phase print out should work fine as is
+	# 		ob_name = name.split('-')[1]
+	# 		the_object = _getByName(tree, ob_name)
+	# 		# print("the_object:", the_object)
+	# 		# create phase list, removing neutral phases
+	# 		phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
+	# 		# print("phase_ids:", phase_ids)
+	# 		# print("headings list:", df.columns)
+	# 		if phase_ids == ['1']:
+	# 			df[[' V2']] = np.NaN
+	# 			df[[' V3']] = np.NaN
+	# 		elif phase_ids == ['2']:
+	# 			df[[' V2']] = df[[' V1']]
+	# 			df[[' V1']] = np.NaN
+	# 			df[[' V3']] = np.NaN
+	# 		elif phase_ids == ['3']:
+	# 			df[[' V3']] = df[[' V1']]
+	# 			df[[' V1']] = np.NaN
+	# 			df[[' V2']] = np.NaN
+	# 		# print("df after phase reassignment:")
+	# 		# print(df.head(10))
+	# 		df['Name'] = ob_name
+	# 		all_load_df = pd.concat([all_load_df, df], ignore_index=True, sort=False)
+	# 		# # pd.set_option('display.max_columns', None)
+	# 	if not keepAllFiles:
+	# 		os.remove(csv_path)
 # 	# Collect switching actions
 # 	for key, ob in actions.items():
 # 		if ob.startswith('open'):
@@ -440,6 +448,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 	with open(f'{dssFileLoc}/dss_run_file.dss', 'w') as run_file:
 		run_file.write(dss_run_file)
 	os.system(f'opendsscmd {dssFileLoc}/dss_run_file.dss')
+
 	# Aggregate monitors
 	all_load_df = pd.DataFrame()
 	for name in mon_names:
@@ -449,25 +458,25 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 			# # TODO: TEST THAT the commented out phasing code below works after new_newQSTSplot() is updated
 			# # reassign V1 single phase voltages outputted by DSS to the appropriate column and filling Nans for neutral phases (V2)
 			# # three phase print out should work fine as is
-			# ob_name = name.split('-')[1]
+			ob_name = name.split('-')[1]
 			# # print("ob_name:", ob_name)
-			# the_object = _getByName(tree, ob_name)
+			the_object = _getByName(tree, ob_name)
 			# # print("the_object:", the_object)
 			# # create phase list, removing neutral phases
-			# phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
+			phase_ids = the_object.get('bus1','').replace('.0','').split('.')[1:]
 			# # print("phase_ids:", phase_ids)
 			# # print("headings list:", df.columns)
-			# if phase_ids == ['1']:
-			# 	df[[' V2']] = np.NaN
-			# 	df[[' V3']] = np.NaN
-			# elif phase_ids == ['2']:
-			# 	df[[' V2']] = df[[' V1']]
-			# 	df[[' V1']] = np.NaN
-			# 	df[[' V3']] = np.NaN
-			# elif phase_ids == ['3']:
-			# 	df[[' V3']] = df[[' V1']]
-			# 	df[[' V1']] = np.NaN
-			# 	df[[' V2']] = np.NaN
+			if phase_ids == ['1']:
+				df[[' V2']] = np.NaN
+				df[[' V3']] = np.NaN
+			elif phase_ids == ['2']:
+				df[[' V2']] = df[[' V1']]
+				df[[' V1']] = np.NaN
+				df[[' V3']] = np.NaN
+			elif phase_ids == ['3']:
+				df[[' V3']] = df[[' V1']]
+				df[[' V1']] = np.NaN
+				df[[' V2']] = np.NaN
 			# # print("df after phase reassignment:")
 			# # print(df.head(10))
 			df['Name'] = name
@@ -476,6 +485,7 @@ def newQstsPlot(filePath, stepSizeInMinutes, numberOfSteps, keepAllFiles=False, 
 			#print("all_load_df:", df.head(50))
 		if not keepAllFiles:
 			os.remove(csv_path)
+
 	# Collect switching actions
 	for key, ob in actions.items():
 		if ob.startswith('open'):

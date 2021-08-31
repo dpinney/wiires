@@ -137,7 +137,6 @@ time and location
  output_path='test')
 ```
 ![newplot](https://user-images.githubusercontent.com/65563537/131521629-47b3ea4a-5111-4cbe-82d7-b14af9d84379.png)
-
 <img width="1286" alt="Screen Shot 2021-08-31 at 11 16 34 AM" src="https://user-images.githubusercontent.com/65563537/131529540-07a6f6e3-b269-41f2-87a8-d009c0c77ae6.png">
 ```
 >>> # use SciPy optimization to find the lowest cost energy mix

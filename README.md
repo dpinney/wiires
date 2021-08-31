@@ -151,20 +151,18 @@ time and location
 ```
 ## Hosting Capacity ##
 Use hosting_cap.py to find the hosting capacity of the loads of any OpenDSS circuit.
-hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times 
-the nominal voltage.
-hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus 
-to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined 
-in red.
+hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage.
+hosting_cap.py finds the per unit voltages of the load, prints the amount of generation needed to push the bus to hosting capacity, and outputs a plot of the circuit to a specified path with the buses over hosting capacity outlined in red.
 get_hosting_cap() takes the following arguments:
 - circuit path
 - starting count of turbines
 - stopping count of turbines
+- size of turbines added in W
 - option to save a csv of each load's capacity
 - option to find hosting capacity of the circuit over a year or by snapshot
+- option to only find the hosting capacity of one load (accepts string of load name)
 - option to show load labels on nodes in the plot
 - size of the plot nodes
-- size of plot 
 - font size
 - the option to use python multiprocessing
 - if multiprocessing, the amount of cores used

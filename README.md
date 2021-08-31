@@ -148,17 +148,19 @@ time and location
 >>> results
 [1617936.434096718, 3853494.8130528317, 6297853.202623451, 2888808.172369332, 5566520009.556752]
 
->>> # use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
+>>> # use hosting_cap.py to find the hosting capacity of the loads of any OpenDSS circuit
 >>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times 
 the nominal voltage
 >>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus 
 to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined 
 in red
->>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of 
-turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print 
-statement.
->>> wiires.hosting_cap.get_hosting_cap("lehigh.dss", 100, 200)
-Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distributed generation per load.
-Node 611 reached hosting capacity at 1.0504
+>>> # get_hosting_cap() takes 14 arguments: the circuit path, the starting count of turbines, the stopping count of 
+turbines, the option to save a csv of each load's capacity, the option to find hosting capacity of the circuit over a
+year or by snapshot, the option to show load labels on nodes in the plot, size of the plot nodes, size of plot font 
+size, the option to use python multiprocessing, and, if so, the amount of cores used. If the circuit does not reach 
+hosting capacity within the range, the program will notify the user by print statement.
+>>> if __name__ == "__main__":
+>>>	wiires.get_host_cap('lehigh.dss', 1, 25, 100_000, save_csv=True, timeseries=False, load_name=None, 
+figsize=(20,20), output_path='test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 ```
 ![networkPlot](https://user-images.githubusercontent.com/65563537/120389152-09fb2a80-c2fa-11eb-837f-06e2a7ac2435.png)

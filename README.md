@@ -128,11 +128,13 @@ cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, in
 TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, 
 show_mix=True, csv=True, output_path='demonstration_csv')
 
->>> # get a graph of a particular combination of solar/wind/battery/inverter capacity against a provided load at a given time/location
+>>> # get a graph of a particular combination of solar/wind/battery/inverter capacity against a provided load at a given
+time and location
 >>> # if csv=True, a csv of costs is saved to the output path 
->>> wiires.mix_graph("./loads", 39.952437, -75.16378, 2019, 10_000_000, 10_000_000, 5_000, peak_shave=True, dischargeRate=5_000, 
-chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, 
-grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, csv=True, output_path='test')
+>>> wiires.mix_graph("./loads", 39.952437, -75.16378, 2019, 10_000_000, 10_000_000, 5_000, peak_shave=True, 
+dischargeRate=5_000, chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, 
+inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, csv=True, 
+output_path='test')
 ```
 ![LCEM_graph](https://user-images.githubusercontent.com/65563537/117373430-32c60680-ae99-11eb-83e0-146f3efb739e.png)
 ```
@@ -158,9 +160,14 @@ grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, 
 [1617936.434096718, 3853494.8130528317, 6297853.202623451, 2888808.172369332, 5566520009.556752]
 
 >>> # use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
->>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage
->>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined in red
->>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.
+>>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times 
+the nominal voltage
+>>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus 
+to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined 
+in red
+>>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of 
+turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print 
+statement.
 >>> wiires.hosting_cap.get_hosting_cap("lehigh.dss", 100, 200)
 Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distributed generation per load.
 Node 611 reached hosting capacity at 1.0504

@@ -169,7 +169,7 @@ get_hosting_cap() takes the following arguments:
 If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.
 ```
 >>> if __name__ == "__main__":
->>>	wiires.get_host_cap('lehigh.dss', 1, 25, 100_000, save_csv=True, timeseries=False, load_name=None, 
-figsize=(20,20), output_path='test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
+>>>	wiires.get_host_cap('lehigh.dss', 1, 25, 100_000, save_csv=True, timeseries=False, load_name=None, figsize=(20,20), 
+output_path='test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 ```
 ![networkPlot](https://user-images.githubusercontent.com/65563537/120389152-09fb2a80-c2fa-11eb-837f-06e2a7ac2435.png)

@@ -132,9 +132,9 @@ show_mix=True, csv=True, output_path='demonstration_csv')
 time and location
 >>> # if csv=True, a csv of costs is saved to the output path 
 >>> wiires.mix_graph("./loads.csv", 39.952437, -75.16378, 2019, 10_000_000, 10_000_000, 5_000_000, peak_shave=False, 
-	dischargeRate=5_000, chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, 
-	inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, csv=True, 
- output_path='test')
+	dischargeRate=5_000, chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, 
+	batt_rate=840, inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, 
+	csv=True, output_path='test')
 ```
 ![newplot](https://user-images.githubusercontent.com/65563537/131521629-47b3ea4a-5111-4cbe-82d7-b14af9d84379.png)
 <img width="1286" alt="Screen Shot 2021-08-31 at 11 16 34 AM" src="https://user-images.githubusercontent.com/65563537/131529540-07a6f6e3-b269-41f2-87a8-d009c0c77ae6.png">

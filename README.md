@@ -137,9 +137,6 @@ time and location
  output_path='test')
 ```
 ![newplot](https://user-images.githubusercontent.com/65563537/131521629-47b3ea4a-5111-4cbe-82d7-b14af9d84379.png)
-```
-Preview of a csv with cost data.
-```
 <img width="1286" alt="Screen Shot 2021-08-31 at 11 16 34 AM" src="https://user-images.githubusercontent.com/65563537/131529540-07a6f6e3-b269-41f2-87a8-d009c0c77ae6.png">
 ```
 
@@ -166,4 +163,3 @@ Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distri
 Node 611 reached hosting capacity at 1.0504
 ```
 ![networkPlot](https://user-images.githubusercontent.com/65563537/120389152-09fb2a80-c2fa-11eb-837f-06e2a7ac2435.png)
-```

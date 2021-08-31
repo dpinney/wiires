@@ -539,31 +539,31 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, so
 		tot_cost = solar_cost + wind_cost + new_storage_cost + new_inverter_cost + fossil_cost + solar_OM + wind_OM
 
 	if csv == True: 
-		cost_dict = {}
-		cost_dict['tot_cost'] = tot_cost
-		cost_dict['solar capacity (W)'] = solar_cap
-		cost_dict['wind capacity (W)'] = wind_cap
-		cost_dict['battery capacity (Wh)'] = batt_cap
-		cost_dict['inverter capacity (W)'] = inverter_cap
-		cost_dict['grid electricity (Wh)'] = sum(fossil_ds)
-		cost_dict['solar_cost'] = solar_cost
-		cost_dict['wind_cost'] = wind_cost
-		cost_dict['storage_cost'] = storage_cost
-		cost_dict['inverter_cost'] = inverter_cost
-		cost_dict['storage cost after replacement'] = new_storage_cost
-		cost_dict['inverter cost after replacement'] = new_inverter_cost
-		cost_dict['fossil_cost'] = fossil_cost
-		cost_dict['solar_OM'] = solar_OM
-		cost_dict['wind_OM'] = wind_OM 
-		cost_dict['grid rates in 25 years'] = escalation_list
-		cost_dict['12 peak demands'] = [max(mon_dem) for mon_dem in monthly_demands]
-		cost_dict['12 peak demand charges'] = [demand_rate*max(mon_dem) for mon_dem in monthly_demands]
-		cost_dict['12 grid charges'] = [rate * sum(mon_dem) for mon_dem in monthly_demands]
+		cost_dict = {
+		'tot_cost':tot_cost,
+		'solar capacity (W)':solar_cap,
+		'wind capacity (W)':wind_cap,
+		'battery capacity (Wh)':batt_cap,
+		'inverter capacity (W)':inverter_cap,
+		'grid electricity (Wh)':sum(fossil_ds),
+		'solar_cost':solar_cost,
+		'wind_cost':wind_cost
+		'storage_cost':storage_cost,
+		'inverter_cost':inverter_cost,
+		'storage cost after replacement':new_storage_cost,
+		'inverter cost after replacement':new_inverter_cost,
+		'fossil_cost':fossil_cost,
+		'solar_OM':solar_OM,
+		'wind_OM':wind_OM, 
+		'grid rates in 25 years':escalation_list,
+		'12 peak demands':[max(mon_dem) for mon_dem in monthly_demands],
+		'12 peak demand charges':[demand_rate*max(mon_dem) for mon_dem in monthly_demands],
+		'12 grid charges':[rate * sum(mon_dem) for mon_dem in monthly_demands],
+		}
 		if net_metering == True:
 			cost_dict['1 year of curtailment export'] = sum(curtailment_ds) * export_rate
 		print(cost_dict)
 		cost_df = pd.DataFrame([cost_dict])
-		# cost_df = cost_df.from_dict(cost_dict, orient='columns', dtype=None, columns=None)
 		cost_df.to_csv(f'{output_path}.csv')
 	return tot_cost
 

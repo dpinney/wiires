@@ -99,28 +99,46 @@ time
 Name: feedin_power_plant, Length: 8760, dtype: float64
 
 >>> # find the lowest cost energy mix using grid search for a year of hourly load shapes given a location and year
->>> # function accepts loads (csv or list), coordinates, year, solar/wind/battery capacity minimums/maximums/step sizes, the option to use battery power to shave peaks, a battery discharge and charge rate (inverter capacity), quantity of battery cells, depth of discharge percentage, solar/wind/battery/inverter capital rates in $/kW of capacity, a grid rate in $/kWh, the option to use a csv of Time of Use rates instead of a flat grid charge, a demand charge in $/kW, the option to sell excess renewable generation back to the grid, an export rate in $/kWh, the option to run a refined grid search recursively, the option to use Python multiprocessing, a number of cores to run multiprocessing with, the option to output a graph of the final optimized energy mix, the option to output a csv of a cost breakdown, and an output path for the optional csv. 
+>>> # function accepts: 
+>>> # - loads (csv or list)
+>>> # – coordinates
+>>> # – year 
+>>> # – solar/wind/battery capacity minimums/maximums/step sizes 
+>>> # – the option to use battery power to shave peaks
+>>> # – a battery discharge and charge rate (inverter capacity)
+>>> # – quantity of battery cells
+>>> # – depth of discharge percentage
+>>> # – solar/wind/battery/inverter capital rates in $/kW of capacity 
+>>> # – a grid rate in $/kWh
+>>> # – the option to use a csv of Time of Use rates instead of a flat grid charge
+>>> # – a demand charge in $/kW
+>>> # – the option to sell excess renewable generation back to the grid
+>>> # – an export rate in $/kWh
+>>> # – the option to run a refined grid search recursively
+>>> # – the option to use Python multiprocessing
+>>> # – a number of cores to run multiprocessing with
+>>> # – the option to output a graph of the final optimized energy mix
+>>> # – the option to output a csv of a cost breakdown 
+>>> # – an output path for the optional csv. 
 
 >>> if __name__ == "__main__":
->>>     wiires.LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='demonstration_csv')
+>>>     wiires.LCEM("./loads.csv", 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 
+60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, 
+cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, 
+TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, 
+show_mix=True, csv=True, output_path='demonstration_csv')
 
->>> # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
->>> df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./loads.csv", 10_000_000, 10_000_000, 55_000_000, 39.952437, -75.16378, 2019)
+>>> # get a graph of a particular combination of solar/wind/battery/inverter capacity against a provided load at a given
+time and location
+>>> # if csv=True, a csv of costs is saved to the output path 
+>>> wiires.mix_graph("./loads.csv", 39.952437, -75.16378, 2019, 10_000_000, 10_000_000, 5_000_000, peak_shave=False, 
+	dischargeRate=5_000, chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, 
+	batt_rate=840, inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, 
+	csv=True, output_path='test')
 ```
-![LCEM_graph](https://user-images.githubusercontent.com/65563537/117373430-32c60680-ae99-11eb-83e0-146f3efb739e.png)
+![newplot](https://user-images.githubusercontent.com/65563537/131521629-47b3ea4a-5111-4cbe-82d7-b14af9d84379.png)
+<img width="1286" alt="Screen Shot 2021-08-31 at 11 16 34 AM" src="https://user-images.githubusercontent.com/65563537/131529540-07a6f6e3-b269-41f2-87a8-d009c0c77ae6.png">
 ```
->>> df
-   index  solar         wind  ...        charge  fossil  curtailment
-0      0    0.0  1966.564244  ...  55000.000000     0.0 -1175.116231
-1      1    0.0  1093.980222  ...  55000.000000     0.0  -303.968290
-2      2    0.0   367.990938  ...  54578.080055     0.0     0.000000
-3      3    0.0   332.184239  ...  54079.690885     0.0     0.000000
-4      4    0.0   523.140147  ...  53747.162622     0.0     0.000000
->>> total_cost
-792.3018640684181
->>> fossil_total
-26211.31538862757
-
 >>> # use SciPy optimization to find the lowest cost energy mix
 >>> # outputs total cost in dollars, solar, wind, and storage capacity in Watts, and grid electricity use in Wh
 >>> weather_ds = wiires.LCEM.get_weather(39.952437, -75.16378, 2019)
@@ -131,9 +149,14 @@ Name: feedin_power_plant, Length: 8760, dtype: float64
 [1617936.434096718, 3853494.8130528317, 6297853.202623451, 2888808.172369332, 5566520009.556752]
 
 >>> # use hosting_cap.py to find the hosting capacity of any OpenDSS circuit
->>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times the nominal voltage
->>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined in red
->>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.
+>>> # hosting_cap.py adds 15.6 kW turbines to each load in the circuit incrementally until a load reaches 1.05 times 
+the nominal voltage
+>>> # hosting_cap.py prints the bus that hit hosting capacity, prints the amount of generation needed to push the bus 
+to hosting capacity, and outputs a plot of the circuit to networkPlot.png with the buses over hosting capacity outlined 
+in red
+>>> # get_hosting_cap() takes 3 arguments: the circuit name, the starting count of turbines, and the stopping count of 
+turbines. If the circuit does not reach hosting capacity within the range, the program will notify the user by print 
+statement.
 >>> wiires.hosting_cap.get_hosting_cap("lehigh.dss", 100, 200)
 Circuit reached hosting capacity at 171 15.6 kW turbines, or 2667.6 kW of distributed generation per load.
 Node 611 reached hosting capacity at 1.0504

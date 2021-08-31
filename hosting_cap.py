@@ -545,9 +545,9 @@ def _getByName(tree, name):
     return matches[0]
 
 
-if __name__ == "__main__":
-	get_host_cap('./data/lehigh.dss', 1, 5, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', 
-		show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
+# if __name__ == "__main__":
+# 	get_host_cap('./data/lehigh.dss', 1, 25, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', 
+# 		show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 
 
 # if __name__ == '__main__':

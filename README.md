@@ -98,7 +98,8 @@ time
 2019-12-31 22:00:00+00:00    0.154031
 Name: feedin_power_plant, Length: 8760, dtype: float64
 ```
-Lowest Cost Energy Mix: Find a low cost mix using grid search for a year of hourly load shapes given location coordinates
+## Lowest Cost Energy Mix: ## 
+Find a low cost mix using grid search for a year of hourly load shapes given location coordinates.
 The LCEM function accepts: 
 - loads (csv or list)
 – coordinates

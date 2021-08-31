@@ -120,7 +120,7 @@ The LCEM function accepts:
 - a number of cores to run multiprocessing with
 - the option to output a graph of the final optimized energy mix
 - the option to output a csv of a cost breakdown 
-- an output path for the optional csv. 
+- an output path for the optional csv
 ```
 >>> if __name__ == "__main__":
 >>>     wiires.LCEM("./loads.csv", 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 

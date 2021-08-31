@@ -136,19 +136,8 @@ dischargeRate=5_000, chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=
 inverter_rate=420, grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, csv=True, 
 output_path='test')
 ```
-![LCEM_graph](https://user-images.githubusercontent.com/65563537/117373430-32c60680-ae99-11eb-83e0-146f3efb739e.png)
+![newplot](https://user-images.githubusercontent.com/65563537/131521629-47b3ea4a-5111-4cbe-82d7-b14af9d84379.png)
 ```
->>> df
-   index  solar         wind  ...        charge  fossil  curtailment
-0      0    0.0  1966.564244  ...  55000.000000     0.0 -1175.116231
-1      1    0.0  1093.980222  ...  55000.000000     0.0  -303.968290
-2      2    0.0   367.990938  ...  54578.080055     0.0     0.000000
-3      3    0.0   332.184239  ...  54079.690885     0.0     0.000000
-4      4    0.0   523.140147  ...  53747.162622     0.0     0.000000
->>> total_cost
-792.3018640684181
->>> fossil_total
-26211.31538862757
 
 >>> # use SciPy optimization to find the lowest cost energy mix
 >>> # outputs total cost in dollars, solar, wind, and storage capacity in Watts, and grid electricity use in Wh

@@ -123,8 +123,8 @@ The LCEM function accepts:
 - an output path for the optional csv
 ```
 >>> if __name__ == "__main__":
->>>     wiires.LCEM("./loads.csv", 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 
-60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, 
+>>>     wiires.LCEM("./loads.csv", 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 60_000_000, 
+5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, 
 cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, 
 TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, 
 show_mix=True, csv=True, output_path='demonstration_csv')

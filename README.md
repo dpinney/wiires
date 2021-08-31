@@ -97,30 +97,30 @@ time
 2019-12-31 21:00:00+00:00    0.079960
 2019-12-31 22:00:00+00:00    0.154031
 Name: feedin_power_plant, Length: 8760, dtype: float64
-
->>> # find the lowest cost energy mix using grid search for a year of hourly load shapes given a location and year
->>> # function accepts: 
->>> # - loads (csv or list)
->>> # – coordinates
->>> # – year 
->>> # – solar/wind/battery capacity minimums/maximums/step sizes 
->>> # – the option to use battery power to shave peaks
->>> # – a battery discharge and charge rate (inverter capacity)
->>> # – quantity of battery cells
->>> # – depth of discharge percentage
->>> # – solar/wind/battery/inverter capital rates in $/kW of capacity 
->>> # – a grid rate in $/kWh
->>> # – the option to use a csv of Time of Use rates instead of a flat grid charge
->>> # – a demand charge in $/kW
->>> # – the option to sell excess renewable generation back to the grid
->>> # – an export rate in $/kWh
->>> # – the option to run a refined grid search recursively
->>> # – the option to use Python multiprocessing
->>> # – a number of cores to run multiprocessing with
->>> # – the option to output a graph of the final optimized energy mix
->>> # – the option to output a csv of a cost breakdown 
->>> # – an output path for the optional csv. 
-
+```
+Lowest Cost Energy Mix: Find a low cost mix using grid search for a year of hourly load shapes given location coordinates
+The LCEM function accepts: 
+- loads (csv or list)
+– coordinates
+– year 
+– solar/wind/battery capacity minimums/maximums/step sizes 
+– the option to use battery power to shave peaks
+– a battery discharge and charge rate (inverter capacity)
+– quantity of battery cells
+– depth of discharge percentage
+– solar/wind/battery/inverter capital rates in $/kW of capacity 
+– a grid rate in $/kWh
+– the option to use a csv of Time of Use rates instead of a flat grid charge
+– a demand charge in $/kW
+– the option to sell excess renewable generation back to the grid
+– an export rate in $/kWh
+– the option to run a refined grid search recursively
+– the option to use Python multiprocessing
+– a number of cores to run multiprocessing with
+– the option to output a graph of the final optimized energy mix
+– the option to output a csv of a cost breakdown 
+– an output path for the optional csv. 
+```
 >>> if __name__ == "__main__":
 >>>     wiires.LCEM("./loads.csv", 39.952437, -75.16378, 2019, 0, 60_000_000, 5_000_000, 0, 
 60_000_000, 5_000_000, 0, 60_000_000, 5_000_000, peak_shave=True, dischargeRate=108300, chargeRate=108300, 

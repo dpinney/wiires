@@ -128,8 +128,11 @@ cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, in
 TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, 
 show_mix=True, csv=True, output_path='demonstration_csv')
 
->>> # get the data frame of storage/curtailed generation/renewables/fossil/demand/wind/solar levels hourly for a particular preset of solar/wind/storage capacity for a particular location and year, graph the mix, get the total cost of the system, and get the total wattage of grid electricity used in the year 
->>> df, chart, total_cost, fossil_total = wiires.LCEM.calc_ren_mix("./loads.csv", 10_000_000, 10_000_000, 55_000_000, 39.952437, -75.16378, 2019)
+>>> # get a graph of a particular combination of solar/wind/battery/inverter capacity against a provided load at a given time/location
+>>> # if csv=True, a csv of costs is saved to the output path 
+>>> wiires.mix_graph("./loads", 39.952437, -75.16378, 2019, 10_000_000, 10_000_000, 5_000, peak_shave=True, dischargeRate=5_000, 
+chargeRate=5_000, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, 
+grid_rate=0.11, TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, csv=True, output_path='test')
 ```
 ![LCEM_graph](https://user-images.githubusercontent.com/65563537/117373430-32c60680-ae99-11eb-83e0-146f3efb739e.png)
 ```

@@ -474,7 +474,7 @@ def batt_pusher(demand_after_renewables, battCapacity, battDischarge, battCharge
 
 
 def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.13, TOU=None, demand_rate=18, net_metering=False, export_rate=0.034, csv=False, output_path='test'): 
-	inverter_cap = 108300
+	inverter_cap = 108_300
 
 	# Capital expenditures
 	# NOTE: wind and solar federal ITC is 26% (Omitted due to REopt limitations)
@@ -547,7 +547,7 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, so
 		'inverter capacity (W)':inverter_cap,
 		'grid electricity (Wh)':sum(fossil_ds),
 		'solar_cost':solar_cost,
-		'wind_cost':wind_cost
+		'wind_cost':wind_cost,
 		'storage_cost':storage_cost,
 		'inverter_cost':inverter_cost,
 		'storage cost after replacement':new_storage_cost,
@@ -583,5 +583,5 @@ def multiprocessor(load, solar_output_ds, wind_output_ds, peak_shave, battDischa
 
 if __name__ == "__main__":
     LCEM('data/all_loads_vertical.csv', 39.952437, -75.16378, 2019, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, 0, 60_000_001, 5_000_000, peak_shave=True, 
-    	dischargeRate=108300, chargeRate=108300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.11, 
-    	TOU=None, demand_rate=15, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='philly_optimized_inverter')
+    	dischargeRate=108_300, chargeRate=108_300, cellQuantity=1, dodFactor=80, solar_rate=1600, wind_rate=2000, batt_rate=840, inverter_rate=420, grid_rate=0.13, 
+    	TOU=None, demand_rate=18, net_metering=True, export_rate=0.034, refined_grid_search=True, multiprocess=True, cores=8, show_mix=True, csv=True, output_path='philly_optimized_inverter')

@@ -161,9 +161,11 @@ get_hosting_cap() takes the following arguments:
 - option to save a csv of each load's capacity
 - option to find hosting capacity of the circuit over a year or by snapshot
 - option to only find the hosting capacity of one load (accepts string of load name)
+- size of figure plot
+- output path of both plot and csv
 - option to show load labels on nodes in the plot
 - size of the plot nodes
-- font size
+- font size of plot labels
 - the option to use python multiprocessing
 - if multiprocessing, the amount of cores used
 If the circuit does not reach hosting capacity within the range, the program will notify the user by print statement.

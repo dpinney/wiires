@@ -254,7 +254,7 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 				maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
 			except:
 				bug = open('./data/cap_circuit.dss')
-				fixer = open("bug_file.dss", "w")
+				fixer = open(f"./bug_files/{load_buses}.dss", "w")
 				fixer.write(bug.read())
 				bug.close()
 				fixer.close()

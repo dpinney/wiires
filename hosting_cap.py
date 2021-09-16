@@ -566,9 +566,9 @@ def _getByName(tree, name):
     return matches[0]
 
 
-if __name__ == "__main__":
-	get_host_cap('./data/lehigh.dss', 1, 250, 10_000, save_csv=True, timeseries=True, load_name=None, figsize=(20,20), 
-		output_path='multiprocessing_timeseries_test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
+# if __name__ == "__main__":
+# 	get_host_cap('./data/lehigh.dss', 1, 250, 10_000, save_csv=True, timeseries=True, load_name=None, figsize=(20,20), 
+# 		output_path='multiprocessing_timeseries_test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 
 
 # if __name__ == '__main__':

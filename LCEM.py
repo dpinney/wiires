@@ -366,10 +366,10 @@ def batt_pusher(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW):
 				charge = prev_charge + custom_batt_power_kW
 				mix_df.at[i, 'demand_minus_renewables'] = min(-1 * new_net_renewables, custom_batt_power_kW) - prev_charge - custom_batt_power_kW
 			mix_df.at[i, 'charge'] = charge 
-			STORAGE_DIFF.append(0 if i == mix_df.index[0] else mix_df.at[i, 'charge'] - mix_df.at[i-1, 'charge'])
+			# STORAGE_DIFF.append(0 if i == mix_df.index[0] else mix_df.at[i, 'charge'] - mix_df.at[i-1, 'charge'])
 	mix_df['fossil'] = [x if x>0 else 0.0 for x in mix_df['demand_minus_renewables']]
 	mix_df['curtailment'] = [x if x<0 else 0.0 for x in mix_df['demand_minus_renewables']] # TO DO: this plots incorrectly
-	ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
+	# ABS_DIFF = [abs(i) for i in STORAGE_DIFF]
 	# capacity_times_cycles = (sum(ABS_DIFF) * 0.5)
 	return mix_df['fossil'], mix_df['curtailment'], mix_df['charge']
 
@@ -582,8 +582,8 @@ def LCEM(load_kW, latitude, longitude, year, solar_min_kW, solar_max_kW, solar_s
 
 if __name__ == "__main__":
     LCEM('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 0, 60_001, 5_000, 0, 60_001, 5_000, 0, 60_001, 5_000, 
-    	peak_shave=True, custom_batt_power_kW=None, dod_percentage=100, 
-    	sol_USD_per_kW=100, win_USD_per_kW=100, bat_USD_per_kWh=100, inv_USD_per_kW=100, 
-    	grid_USD_per_kWh=0.15, TOU=None, demand_USD_per_kW=20, net_metering=False, export_USD_per_kWh=0.034, 
-    	refined_grid_search=False, multiprocess=True, cores=8, 
-    	show_mix=True, csv=True, output_path='some_battery_please')
+    	peak_shave=False, custom_batt_power_kW=None, dod_percentage=100, 
+    	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, 
+    	grid_USD_per_kWh=0.13, TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, 
+    	refined_grid_search=False, multiprocess=False, cores=8, 
+    	show_mix=True, csv=True, output_path='test')

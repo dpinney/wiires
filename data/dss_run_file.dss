@@ -17,7 +17,7 @@ new object=monitor.monload-670a_residential2 element=load.670a_residential2 term
 new object=monitor.monload-670b_residential2 element=load.670b_residential2 terminal=1 mode=0
 new object=monitor.monload-670c_residential2 element=load.670c_residential2 terminal=1 mode=0
 set mode=yearly stepsize=60m 
-set number=1
+set number=8760
 solve
 export monitors monitorname=monload-671_command_center
 export monitors monitorname=monload-634a_data_center

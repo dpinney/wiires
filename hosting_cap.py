@@ -8,6 +8,8 @@ import math
 import dss_manipulation
 import numpy as np
 import multiprocessing
+import tempfile
+# import shutil
 from functools import partial
 
 
@@ -195,7 +197,8 @@ def convert_to_hex(rgba_color) :
     return '#%02x%02x%02x' % (red, green, blue)
 
 
-def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output_path = './test', timeseries=False, load_name=None, multiprocess=False, cores=8):
+def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output_path = './test', timeseries=False, 
+	load_name=None, multiprocess=False, cores=8):
 	tree = dss_manipulation.dss_to_tree(file_path)
 	if load_name != None:
 		load_buses = [y.get('bus1') for y in tree if load_name in y.get('object','')]
@@ -219,7 +222,7 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 		print(f'Running multiprocessor {len(load_buses)} times with {cores} cores')
 		cap_list.append(pool.map(func, load_buses))
 		return cap_list
-	else:
+	elif multiprocess == False:
 		for load in load_buses:
 			print(load)
 			for counter in range(turb_min, turb_max):
@@ -236,10 +239,6 @@ def host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv=False, output
 				else:
 					cap_dict[load] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 					print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
-		if save_csv==True:
-			cap_df = pd.DataFrame()
-			cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
-			cap_df.to_csv(f'{output_path}.csv')
 		return cap_dict
 
 
@@ -248,40 +247,62 @@ def multiprocessor(turb_min, turb_max, tree, turb_kw, timeseries, load_buses):
 	print(load_buses)
 	for counter in range(turb_min, turb_max):
 		dg_tree = dss_manipulation.add_turbine(tree, counter, load_buses, turb_kw)
-		dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
-		if timeseries == False:
-			try:
+		# dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
+		# if timeseries == False:
+		with tempfile.TemporaryDirectory() as path:
+			os.chdir(path)
+			print(os.getcwd())
+			os.mkdir('./data')
+			dss_manipulation.tree_to_dss(dg_tree, './data/cap_circuit.dss')
+			if timeseries == False:
 				maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 1)
-			except:
-				bug = open('./data/cap_circuit.dss')
-				fixer = open(f"./bug_files/{load_buses}.dss", "w")
-				fixer.write(bug.read())
-				bug.close()
-				fixer.close()
-				return
-		if timeseries == True:
-			maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
+			if timeseries == True:
+				maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
+			# except:
+			# 	bug = open('./data/cap_circuit.dss')
+			# 	fixer = open(f"./bug_files/{load_buses}.dss", "w")
+			# 	fixer.write(bug.read())
+			# 	bug.close()
+			# 	fixer.close()
+			#	return
+		# if timeseries == True:
+			# maximums, hour = newQstsPlot('./data/cap_circuit.dss', 60, 8760)
 		print(counter, maximums, hour)
 		if any(j >= 1.05 for j in maximums):
 			# cap_dict[load_buses] = {'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 			print(f"Load reached hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
 			# return (counter, turb_kw, turb_kw*counter, hour, maximums)
 			return {'load':load_buses,'counter':counter,'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}				
-		else:
-			# cap_dict[load_buses] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
-			# print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
-			print(f"Load did not reach hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
-			# return (counter, turb_kw, turb_kw*counter, hour, maximums)
-			return {'load':load_buses,'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+	# cap_dict[load_buses] = {'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
+	# print("Load did not reach hosting capacity at " + str(counter + 1) + " " + str(turb_kw) + " kW turbines, or " + str(turb_kw * (counter + 1)) + " kW.")
+	print(f"Load did not reach hosting capacity at {counter + 1} {turb_kw} kW turbines, or {turb_kw * (counter + 1)} kW.")
+	# return (counter, turb_kw, turb_kw*counter, hour, maximums)
+	return {'load':load_buses,'counter':'> ' + str(counter),'turb_kw':turb_kw,'gen_added':(turb_kw*counter),'hour':hour,'maximums':maximums}
 
 
-def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=8):
+def get_host_cap(file_path, turb_min, turb_max, turb_kw, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), 
+	output_path='./test', show_labels=True, node_size=500, font_size=50, multiprocess=False, cores=2):
 	cap_dict = host_cap_data(file_path, turb_min, turb_max, turb_kw, save_csv, output_path, timeseries, load_name, multiprocess, cores)
-	if type(cap_dict) is dict: 
-		print("cap_dict", cap_dict)
+	# if type(cap_dict) is dict: 
+		# print("cap_dict", cap_dict)
 	if type(cap_dict) is list:
-		print("cap list", cap_dict)
-	return
+		# print("cap list", cap_dict)
+		cap_list = cap_dict[0]
+		cap_dict = {}
+		for item in cap_list:
+			cap_dict[item['load']] = {
+			'counter':item['counter'],
+			'turb_kw':item['turb_kw'],
+			'gen_added':item['gen_added'],
+			'hour':item['hour'],
+			'maximums':item['maximums']
+			}
+	if save_csv==True:
+		cap_df = pd.DataFrame()
+		cap_df = cap_df.from_dict(cap_dict, orient='columns', dtype=None, columns=None)
+		print(cap_df)
+		print(os.getcwd())
+		cap_df.to_csv(f'./data/{output_path}.csv')
 	host_cap_plot(file_path, cap_dict, figsize, output_path, show_labels, node_size, font_size)
 
 
@@ -546,8 +567,8 @@ def _getByName(tree, name):
 
 
 if __name__ == "__main__":
-	get_host_cap('./data/lehigh.dss', 1, 25, 100_000, save_csv=False, timeseries=False, load_name=None, figsize=(20,20), output_path='./multiprocess_test', 
-		show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
+	get_host_cap('./data/lehigh.dss', 1, 250, 10_000, save_csv=True, timeseries=True, load_name=None, figsize=(20,20), 
+		output_path='multiprocessing_timeseries_test', show_labels=True, node_size=500, font_size=50, multiprocess=True, cores=2)
 
 
 # if __name__ == '__main__':

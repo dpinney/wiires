@@ -155,8 +155,8 @@ def host_cap_plot(file_path, cap_dict, figsize=(20,20), output_path='./test', no
 	# Start drawing.
 	plt.figure(figsize=figsize) 
 	spring_pos = nx.drawing.layout.spring_layout(G)
-	vmin = min(gen_added.values())
-	vmax = max(gen_added.values())
+	vmin = min(gen_added_list_rescaled)
+	vmax = max(gen_added_list_rescaled)
 	nx.draw_networkx(G, with_labels=True, node_color=node_cm, node_size=node_size, pos=spring_pos, edgelist=edges, edge_color=edge_cm, vmin=vmin, vmax=vmax)
 	sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
 	plt.colorbar(sm)

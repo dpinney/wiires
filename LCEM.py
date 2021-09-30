@@ -357,14 +357,11 @@ def batt_pusher(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW):
 			else:
 				new_net_renewables = net_renewables - prev_charge # if positive: fossil fuel. if negative: charge battery until maximum. 
 			if new_net_renewables < 0: 
-					charge = min(-1 * new_net_renewables, custom_batt_power_kW) # charges battery by the amount new_net_renewables is negative until hits max chargeable in an hour
+					charge = min(-1 * new_net_renewables, prev_charge + custom_batt_power_kW, batt_energy_kWh) # charges battery by the amount new_net_renewables is negative until hits max chargeable in an hour
 					mix_df.at[i, 'demand_minus_renewables'] = new_net_renewables + charge # cancels out unless hits storage limit. then curtailment # either cancels out and represents a demand perfectly met with renewables and some battery (remaining amount of battery = charge) or 
 			else:
 					charge = 0.0 # we drained the battery 
 					mix_df.at[i, 'demand_minus_renewables'] = new_net_renewables # the amount of fossil we'll need (demand minus renewables minus battery discharge (max dischargeable in an hour))
-			if custom_batt_power_kW < (-1 * new_net_renewables - prev_charge) and (batt_energy_kWh - prev_charge):
-				charge = prev_charge + custom_batt_power_kW
-				mix_df.at[i, 'demand_minus_renewables'] = min(-1 * new_net_renewables, custom_batt_power_kW) - prev_charge - custom_batt_power_kW
 			mix_df.at[i, 'charge'] = charge 
 			# STORAGE_DIFF.append(0 if i == mix_df.index[0] else mix_df.at[i, 'charge'] - mix_df.at[i-1, 'charge'])
 	mix_df['fossil'] = [x if x>0 else 0.0 for x in mix_df['demand_minus_renewables']]
@@ -374,12 +371,14 @@ def batt_pusher(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW):
 	return mix_df['fossil'], mix_df['curtailment'], mix_df['charge']
 
 
-def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, inverter_cap, sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, csv=False, output_path='test'): 
+def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, inverter_cap, 
+	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+	TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, csv=False, output_path='test'):
 	if inverter_cap == None:
 		inverter_cap = batt_cap
 
 	# Capital expenditures
-	# NOTE: wind and solar federal ITC is 26% (Omitted due to REopt limitations)
+	# NOTE: wind and solar federal ITC of 26% was omitted due to REopt limitations
 	solar_cost = solar_cap * sol_USD_per_kW # * 0.74 
 	wind_cost = wind_cap * win_USD_per_kW # * 0.74
 	storage_cost = batt_cap * bat_USD_per_kWh
@@ -405,7 +404,8 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, in
 	oct_demand = fossil_ds[6552:7296]
 	nov_demand = fossil_ds[7296:8016]
 	dec_demand = fossil_ds[8016:8760]
-	monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]	
+	monthly_demands = [jan_demand, feb_demand, mar_demand, apr_demand, may_demand, jun_demand, 
+	jul_demand, aug_demand, sep_demand, oct_demand, nov_demand, dec_demand]	
 
 	if TOU != None:
 		# note: .csv must contain one column of 8760 values 
@@ -431,7 +431,8 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, in
 		fossil_cost = sum(fossil_cost_list)
 
 	if net_metering == True:
-		resale = sum(curtailment_ds) * export_USD_per_kWh * 25 # 25 years of net metering assuming no change to export rate and identical curtailment each year 
+		# 25 years of net metering assuming no change to export rate and identical curtailment each year 
+		resale = sum(curtailment_ds) * export_USD_per_kWh * 25 
 		tot_cost = solar_cost + wind_cost + new_storage_cost + new_inverter_cost + fossil_cost + solar_OM + wind_OM + resale
 	else:
 		tot_cost = solar_cost + wind_cost + new_storage_cost + new_inverter_cost + fossil_cost + solar_OM + wind_OM
@@ -467,9 +468,10 @@ def cost_calculator(fossil_ds, curtailment_ds, solar_cap, wind_cap, batt_cap, in
 	return tot_cost
 
 
-def mix_graph(load_kW, latitude, longitude, year, solar_capacity_kW, wind_capacity_kW, batt_energy_kWh, peak_shave=False, 
-	custom_batt_power_kW=None, dod_percentage=100, sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
-	TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, csv=False, output_path='test'):
+def mix_graph(load_kW, latitude, longitude, year, solar_capacity_kW, wind_capacity_kW, batt_energy_kWh, 
+	peak_shave=False, custom_batt_power_kW=None, dod_percentage=100, 
+	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+	TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, csv=False, output_path='test'):
 	# note: .csv must contain one column of 8760 values 
 	if isinstance(load_kW, str) == True:
 		if load_kW.endswith('.csv'):
@@ -506,11 +508,15 @@ def mix_graph(load_kW, latitude, longitude, year, solar_capacity_kW, wind_capaci
 			)
 	)
 	if csv == True:
-		cost_calculator(fossil, curtailment, solar_capacity_kW, wind_capacity_kW, batt_energy_kWh, custom_batt_power_kW, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, csv, output_path)
+		cost_calculator(fossil, curtailment, solar_capacity_kW, wind_capacity_kW, batt_energy_kWh, custom_batt_power_kW, 
+			sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+			TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, csv, output_path)
 	return mix_chart.show()
 
 
-def multiprocessor(load_kW, solar_output_ds, wind_output_ds, peak_shave, custom_batt_power_kW, dod_decimal, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, params):
+def multiprocessor(load_kW, solar_output_ds, wind_output_ds, peak_shave, custom_batt_power_kW, dod_decimal, 
+	sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+	TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, params):
 	solar, wind, batt = params
 	new_solar, new_wind = new_renewables(solar_output_ds, solar, wind_output_ds, wind)
 	demand_after_renewables = new_demand(load_kW, new_solar, new_wind)
@@ -519,13 +525,18 @@ def multiprocessor(load_kW, solar_output_ds, wind_output_ds, peak_shave, custom_
 		fossil_ds, curtailment_ds, charge_ds = peak_shaver(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW)
 	else:
 		fossil_ds, curtailment_ds, charge_ds = batt_pusher(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW)
-	tot_cost = cost_calculator(fossil_ds, curtailment_ds, solar, wind, batt, custom_batt_power_kW, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False)
+	tot_cost = cost_calculator(fossil_ds, curtailment_ds, solar, wind, batt, custom_batt_power_kW, 
+		sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+		TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False)
 	return tot_cost, solar, wind, batt, sum(fossil_ds)
 
 
-def LCEM(load_kW, latitude, longitude, year, solar_min_kW, solar_max_kW, solar_step_kW, wind_min_kW, wind_max_kW, wind_step_kW, batt_min_kWh, batt_max_kWh, batt_step_kWh, peak_shave=False, 
-	custom_batt_power_kW=None, dod_percentage=100, sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, TOU=None, 
-	demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, refined_grid_search=False, multiprocess=False, cores=8, show_mix=True, csv=True, output_path='test'):
+def LCEM(load_kW, latitude, longitude, year, 
+	solar_min_kW, solar_max_kW, solar_step_kW, wind_min_kW, wind_max_kW, wind_step_kW, batt_min_kWh, batt_max_kWh, batt_step_kWh, 
+	peak_shave=False, custom_batt_power_kW=None, dod_percentage=100, 
+	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+	TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, refined_grid_search=False, 
+	multiprocess=False, cores=8, show_mix=True, csv=True, output_path='test'):
 	weather_ds = get_weather(latitude, longitude, year)
 	solar_output_ds = get_solar(weather_ds)
 	wind_output_ds = get_wind(weather_ds)
@@ -543,7 +554,9 @@ def LCEM(load_kW, latitude, longitude, year, solar_min_kW, solar_max_kW, solar_s
 		batt_iter = float_range(batt_min_kWh, batt_max_kWh, batt_step_kWh)
 		param_list = list(itertools.product(solar_iter,wind_iter,batt_iter))
 		pool = multiprocessing.Pool(processes=cores)
-		func = partial(multiprocessor, load_kW, solar_output_ds, wind_output_ds, peak_shave, custom_batt_power_kW, dod_decimal, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh)
+		func = partial(multiprocessor, load_kW, solar_output_ds, wind_output_ds, peak_shave, custom_batt_power_kW, dod_decimal, 
+			sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+			TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh)
 		print(f' Running multiprocessor {len(param_list)} times with {cores} cores')
 		results.append(pool.map(func, param_list))
 		results = results[0]
@@ -558,7 +571,9 @@ def LCEM(load_kW, latitude, longitude, year, solar_min_kW, solar_max_kW, solar_s
 						fossil_ds, curtailment_ds, charge_ds = peak_shaver(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW)
 					else:
 						fossil_ds, curtailment_ds, charge_ds = batt_pusher(demand_after_renewables, batt_energy_kWh, custom_batt_power_kW)
-					tot_cost = cost_calculator(fossil_ds, curtailment_ds, solar, wind, batt, custom_batt_power_kW, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False, output_path)
+					tot_cost = cost_calculator(fossil_ds, curtailment_ds, solar, wind, batt, custom_batt_power_kW, 
+						sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+						TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False, output_path)
 					results.append([tot_cost, solar, wind, batt, sum(fossil_ds)])
 					print(results[-1])
 	results.sort(key=lambda x:x[0])
@@ -572,18 +587,66 @@ def LCEM(load_kW, latitude, longitude, year, solar_min_kW, solar_max_kW, solar_s
 			new_batt = results[0][3]
 			print('new_solar:', new_solar, 'new_wind:', new_wind, 'new_batt:', new_batt)
 			a, b, c = x * 0.9, y * 0.9, z * 0.9
-			results = LCEM(load_kW, latitude, longitude, year, new_solar - a, new_solar + a, x / 10, new_wind - b, new_wind + b, y / 10, new_batt - c, new_batt + c, z / 10, peak_shave, custom_batt_power_kW, dod_percentage, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False, multiprocess, cores, False, csv, output_path)
+			results = LCEM(load_kW, latitude, longitude, year, 
+				new_solar - a, new_solar + a, x / 10, new_wind - b, new_wind + b, y / 10, new_batt - c, new_batt + c, z / 10, 
+				peak_shave, custom_batt_power_kW, dod_percentage, 
+				sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+				TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, False, 
+				multiprocess, cores, False, csv, output_path)
 			print(" Finshed recursive LCEM iteration")
 			x, y, z = x / 10, y / 10, z / 10
 	if show_mix == True:
-		mix_graph(load_kW, latitude, longitude, year, results[0][1], results[0][2], results[0][3], peak_shave, custom_batt_power_kW, dod_percentage, sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, csv, output_path)
+		mix_graph(load_kW, latitude, longitude, year, results[0][1], results[0][2], results[0][3], 
+			peak_shave, custom_batt_power_kW, dod_percentage, 
+			sol_USD_per_kW, win_USD_per_kW, bat_USD_per_kWh, inv_USD_per_kW, grid_USD_per_kWh, 
+			TOU, demand_USD_per_kW, net_metering, export_USD_per_kWh, csv, output_path)
 	return results
 
 
-if __name__ == "__main__":
-    LCEM('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 0, 60_001, 5_000, 0, 60_001, 5_000, 0, 60_001, 5_000, 
-    	peak_shave=False, custom_batt_power_kW=None, dod_percentage=100, 
-    	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, 
-    	grid_USD_per_kWh=0.13, TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, 
-    	refined_grid_search=False, multiprocess=False, cores=8, 
-    	show_mix=True, csv=True, output_path='test')
+# if __name__ == "__main__":
+#     LCEM('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 0, 60_001, 5_000, 0, 60_001, 5_000, 0, 60_001, 5_000, 
+#     	peak_shave=True, custom_batt_power_kW=108.3, dod_percentage=80, 
+#     	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, 
+#     	grid_USD_per_kWh=0.13, TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, 
+#     	refined_grid_search=False, multiprocess=True, cores=8, 
+#     	show_mix=True, csv=True, output_path='./data/test')
+
+'''--------------------------------         UNIT TESTS         --------------------------------'''
+weather_ds = get_weather(39.952437, -75.16378, 2019)
+print('weather_ds', weather_ds)
+solar_output_ds = get_solar(weather_ds)
+print('solar_output_ds', solar_output_ds[0:10])
+wind_output_ds = get_wind(weather_ds)
+print('wind_output_ds', wind_output_ds[0:10])
+new_solar, new_wind = new_renewables(solar_output_ds, 622.9, wind_output_ds, 1843.3)
+print('new_solar', new_solar[0:10])
+print('new_wind', new_wind[0:10])
+demand_after_renewables = new_demand('data/lehigh_loads_kW.csv', new_solar, new_wind)
+print('demand_after_renewables', demand_after_renewables[0:10])
+fossil, curtailment, charge = peak_shaver(demand_after_renewables, 163.9, 108.3)
+print('fossil', fossil[0:10])
+print('curtailment', curtailment[0:10])
+print('charge', charge[0:10])
+# fossil, curtailment, charge = batt_pusher(demand_after_renewables, 60_000, None)
+# print('fossil', fossil[0:10])
+# print('curtailment', curtailment[0:10])
+# print('charge', charge[0:10])
+tot_cost = cost_calculator(fossil, curtailment, 622.9, 1843.3, 163.9, 108.3, 
+	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+	TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, csv=False, output_path='unit_tests')
+print('tot_cost', tot_cost)
+# mix_graph('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 60_000, 60_000, 60_000, 
+# 	peak_shave=False, custom_batt_power_kW=None, dod_percentage=100, 
+# 	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+# 	TOU=None, demand_USD_per_kW=18, net_metering=False, export_USD_per_kWh=0.034, csv=False, output_path='unit_test')
+# tot_cost, solar, wind, batt, fossil = multiprocessor('data/lehigh_loads_kW.csv', solar_output_ds, wind_output_ds, False, None, 100, 
+# 	1600, 2000, 840, 420, 0.13, 
+# 	None, 18, False, 0.034, (60_000, 60_000, 60_000))
+# print('tot_cost', tot_cost)
+# print('solar', solar)
+# print('wind', wind)
+# print('batt', batt)
+# print('fossil', fossil)
+
+
+

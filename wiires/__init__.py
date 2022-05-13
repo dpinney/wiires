@@ -1,6 +1,6 @@
-import LCEM
-import dss_manipulation
-import graph_dss
-import scipy_test
-import OEM
-import hosting_cap
+from . import LCEM
+from . import dss_manipulation
+from . import graph_dss
+from . import scipy_test
+from . import OEM
+from . import hosting_cap

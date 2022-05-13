@@ -1,3 +1,4 @@
+geoalchemy2<0.7.0
 numpy
 scipy
 OpenDSSDirect.py[extras]

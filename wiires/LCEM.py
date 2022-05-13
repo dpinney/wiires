@@ -611,51 +611,49 @@ def LCEM(load_kW, latitude, longitude, year,
 #     	refined_grid_search=False, multiprocess=True, cores=8, 
 #     	show_mix=True, csv=True, output_path='./data/test')
 
-'''--------------------------------         UNIT TESTS         --------------------------------'''
-weather_ds = get_weather(39.952437, -75.16378, 2019)
-print('weather_ds', weather_ds)
+def tests():
+	'''--------------------------------         UNIT TESTS         --------------------------------'''
+	weather_ds = get_weather(39.952437, -75.16378, 2019)
+	print('weather_ds', weather_ds)
 
-solar_output_ds = get_solar(weather_ds)
-print('solar_output_ds', solar_output_ds[0:10])
+	solar_output_ds = get_solar(weather_ds)
+	print('solar_output_ds', solar_output_ds[0:10])
 
-wind_output_ds = get_wind(weather_ds)
-print('wind_output_ds', wind_output_ds[0:10])
+	wind_output_ds = get_wind(weather_ds)
+	print('wind_output_ds', wind_output_ds[0:10])
 
-new_solar, new_wind = new_renewables(solar_output_ds, 622.9, wind_output_ds, 1843.3)
-print('new_solar', new_solar[0:10])
-print('new_wind', new_wind[0:10])
+	new_solar, new_wind = new_renewables(solar_output_ds, 622.9, wind_output_ds, 1843.3)
+	print('new_solar', new_solar[0:10])
+	print('new_wind', new_wind[0:10])
 
-demand_after_renewables = new_demand('data/lehigh_loads_kW.csv', new_solar, new_wind)
-print('demand_after_renewables', demand_after_renewables[0:10])
+	demand_after_renewables = new_demand('data/lehigh_loads_kW.csv', new_solar, new_wind)
+	print('demand_after_renewables', demand_after_renewables[0:10])
 
-fossil, curtailment, charge = peak_shaver(demand_after_renewables, 163.9, 108.3)
-print('fossil', fossil[0:10])
-print('curtailment', curtailment[0:10])
-print('charge', charge[0:10])
+	fossil, curtailment, charge = peak_shaver(demand_after_renewables, 163.9, 108.3)
+	print('fossil', fossil[0:10])
+	print('curtailment', curtailment[0:10])
+	print('charge', charge[0:10])
 
-# fossil, curtailment, charge = batt_pusher(demand_after_renewables, 163.9, 108.3)
-# print('fossil', fossil[0:10])
-# print('curtailment', curtailment[0:10])
-# print('charge', charge[0:10])
+	# fossil, curtailment, charge = batt_pusher(demand_after_renewables, 163.9, 108.3)
+	# print('fossil', fossil[0:10])
+	# print('curtailment', curtailment[0:10])
+	# print('charge', charge[0:10])
 
-tot_cost = cost_calculator(fossil, curtailment, 622.9, 1843.3, 163.9, 108.3, 
-	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
-	TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, csv=False, output_path='unit_tests')
-print('tot_cost', tot_cost)
+	tot_cost = cost_calculator(fossil, curtailment, 622.9, 1843.3, 163.9, 108.3, 
+		sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+		TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, csv=False, output_path='unit_tests')
+	print('tot_cost', tot_cost)
 
-mix_graph('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 622.9, 1843.3, 163.9, 
-	peak_shave=True, custom_batt_power_kW=108.3, dod_percentage=80, 
-	sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
-	TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, csv=False, output_path='unit_test')
+	mix_graph('data/lehigh_loads_kW.csv', 39.952437, -75.16378, 2019, 622.9, 1843.3, 163.9, 
+		peak_shave=True, custom_batt_power_kW=108.3, dod_percentage=80, 
+		sol_USD_per_kW=1600, win_USD_per_kW=2000, bat_USD_per_kWh=840, inv_USD_per_kW=420, grid_USD_per_kWh=0.13, 
+		TOU=None, demand_USD_per_kW=18, net_metering=True, export_USD_per_kWh=0.034, csv=False, output_path='unit_test')
 
-tot_cost, solar, wind, batt, fossil = multiprocessor('data/lehigh_loads_kW.csv', solar_output_ds, wind_output_ds, True, 108.3, .8, 
-	1600, 2000, 840, 420, 0.13, 
-	None, 18, True, 0.034, (622.9, 1843.3, 163.9))
-print('tot_cost', tot_cost)
-print('solar', solar)
-print('wind', wind)
-print('batt', batt)
-print('fossil', fossil)
-
-
-
+	tot_cost, solar, wind, batt, fossil = multiprocessor('data/lehigh_loads_kW.csv', solar_output_ds, wind_output_ds, True, 108.3, .8, 
+		1600, 2000, 840, 420, 0.13, 
+		None, 18, True, 0.034, (622.9, 1843.3, 163.9))
+	print('tot_cost', tot_cost)
+	print('solar', solar)
+	print('wind', wind)
+	print('batt', batt)
+	print('fossil', fossil)

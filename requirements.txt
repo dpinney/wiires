@@ -1,3 +1,4 @@
+pandas<0.26,>=0.18
 oemof
 OpenDSSDirect.py[extras]
 fire

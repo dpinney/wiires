@@ -1,12 +1,12 @@
-geoalchemy2<0.7.0
-psycopg2
+wheel
 numpy
 scipy
 OpenDSSDirect.py[extras]
 fire
 plotly
 matplotlib
-windpowerlib
-feedinlib
+oemof
+#windpowerlib
+#feedinlib
 #git+https://github.com/wind-python/windpowerlib.git@60f58ce76555b3ff33b31a959cd14958546b24e8
 #git+https://github.com/oemof/feedinlib.git@cd5d2392b398953e40a38909ea0f3a94986cb632

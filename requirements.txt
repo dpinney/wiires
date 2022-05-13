@@ -1,4 +1,5 @@
 geoalchemy2<0.7.0
+psycopg2
 numpy
 scipy
 OpenDSSDirect.py[extras]

@@ -176,8 +176,8 @@ def get_weather(latitude, longitude, year):
 		)
 	os.system("cat './.cdsapirc'")
 	os.environ['EIA_KEY'] = '431b0c60584d74a1ba22c60dbd929619'
-
-	cache_dir = './data/'
+	thisDir = os.path.dirname(__file__)
+	cache_dir = f'{thisDir}/data/'
 	cache_files = os.listdir(cache_dir)
 	def get_climate(latitude, longitude, year):
 			cache_name = f'ERA5_weather_data_{year}_{latitude}_{longitude}.nc'

@@ -5,7 +5,7 @@ import fire
 import pandas as pd
 import opendssdirect as dss
 import math
-import dss_manipulation
+from wiires import dss_manipulation
 import numpy as np
 import multiprocessing
 import tempfile

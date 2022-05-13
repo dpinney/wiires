@@ -2,7 +2,7 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from dss_manipulation import dss_to_tree
+from wiires.dss_manipulation import dss_to_tree
 import fire
 
 

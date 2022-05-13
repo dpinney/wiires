@@ -7,9 +7,9 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from dss_manipulation import dss_to_tree
+from wiires.dss_manipulation import dss_to_tree
 import fire
-import LCEM
+from wiires import LCEM
 
 
 solar_rate = 0.000_032 # $ per Watt

@@ -9,9 +9,5 @@ setup(
 	version='1.0.0',
 	py_modules=['wiires'],
 	install_requires = open("requirements.txt").readlines(),
-	include_package_data=True,
-	cmdclass={
-		'develop':PreDevelopCommand,
-		'install':PreInstallCommand
-	}
+	include_package_data=True
 )

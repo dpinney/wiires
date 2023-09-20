@@ -1,4 +1,5 @@
 import json, time
+import os
 from os.path import join as pJoin
 import wiires, julia
 from julia import Main
@@ -6,6 +7,9 @@ from julia import Main
 #for graphs
 import matplotlib.pyplot as plt
 import numpy as np
+
+#for adding interactive graphs to html
+import mpld3
 
 ########################################################
 #functions for converting REopt input to REopt.jl input
@@ -26,8 +30,10 @@ def init_reopt_to_julia_dict():
               ("blended_annual_energy_rate", {"ElectricTariff"}, None),
               "blended_annual_demand_charges_us_dollars_per_kw":
               ("blended_annual_demand_rate", {"ElectricTariff"}, None),
+              "urdb_label":("urdb_label",{"ElectricTariff"},str),
 
               "LoadProfile":("ElectricLoad", {None}, dict),
+              "critical_loads_kw":("critical_loads_kw",{"ElectricLoad"},list),
               "critical_load_pct":("critical_load_fraction",{"ElectricLoad"}, float),
               "loads_kw":("loads_kw",{"ElectricLoad"},list), "year":("year",{"ElectricLoad"},int), 
               "loads_kw_is_net":("loads_kw_is_net",{"ElectricLoad"},bool),
@@ -45,7 +51,7 @@ def init_reopt_to_julia_dict():
               "max_kw":("max_kw", {"PV","Wind","ElectricStorage","Generator"}, float), 
               "macrs_option_years":("macrs_option_years", {"PV","Wind","ElectricStorage","Generator"}, int),
 
-              #PV, Wind, Generatior shared:
+              #PV, Wind, Generator shared:
               "can_export_beyond_site_load":("can_export_beyond_nem_limit", {"PV","Wind","Generator"}, bool),
               "federal_itc_pct":("federal_itc_fraction", {"PV","Wind","Generator"}, float),
 
@@ -164,9 +170,11 @@ def convert_to_jl(reopt_json):
 ################################
 
 def get_json_file(path):
-    test_json = {}
-    with open(path) as jsonFile:
-        test_json = json.load(jsonFile)
+    test_json = None
+    file = path + ".json"
+    if os.path.exists(file):
+        with open(file) as jsonFile:
+            test_json = json.load(jsonFile)
     return test_json
 
 #default values used in REopt in microgridDesign
@@ -235,106 +243,362 @@ def init_default_julia_json():
     return julia_scenario
 
 #runs julia scenario in REopt.jl (found in ./test.jl)
-def reopt_jl_test(scenario, filePath, outPath):
-    with open(filePath, "w") as jsonFile:
+def reopt_jl_test(scenario, filePath, outPath, solver="SCIP", outages=False, microgrid_only=False):
+    file = filePath + ".json"
+    with open(file, "w") as jsonFile:
         json.dump(scenario, jsonFile)
 
-    julia_code = f"""
-	include("test.jl")
-	main("{filePath}","{outPath}")
-	"""
-
-    Main.eval(julia_code)
+    Main.include("test.jl")
+    Main.main(filePath, outPath, solver, outages, microgrid_only)
 
 ##########################################
 # functions for displaying REopt.jl output
 ##########################################
 
+#generates html for microgrid overview given REopt.jl output json and resilience output json
+def microgrid_overview_table(testName, json, outage_json=None):
+    retStr = f'''<p>
+    Recommended Microgrid Design Overview for {testName} <br>
+    <table border=1px cellspacing=0>
+    '''
+
+    totalSavings = json.get('Financial',{}).get("npv",0)
+    load = json.get('ElectricLoad',{}).get("load_series_kw",0)
+    avgLoad = round(sum(load)/len(load),1)
+
+    totalSolar = json.get('PV',{}).get('size_kw',0)
+    totalWind = json.get('Wind',{}).get('size_kw',0)
+    totalInverter = json.get('ElectricStorage',{}).get('size_kw',0)
+    totalStorage = json.get('ElectricStorage',{}).get('size_kwh',0)
+    totalFossil = json.get('Generator',{}).get('size_kw',0)
+
+    avgOutage = 0
+    if outage_json:
+        avgOutage = outage_json["resilience_hours_avg"]
+
+    #is this equivalent to REopt value?
+    dieselUsed = json.get('Generator',{}).get('annual_fuel_consumption_gal',0)
+    # generator_fuel_used_per_outage_gal? check source code
+
+    retStr += f'''
+      <tr>
+            <th> Total Savings </th>
+            <th> Average Load (kWh) </th>
+            <th> Total Solar (kW) </th>
+            <th> Total Wind (kW) </th>
+            <th> Total Inverter (kW) </th>
+            <th> Total Storage (kWh) </th>
+            <th> Total Fossil (kW) </th>
+            <th> Average length of survived Outage (hours) </th>
+            <th> Fossil Fuel consumed during specified Outage (diesel gal equiv) </th>
+            <th>  </th>
+        </tr>
+        <tr>
+            <td> {totalSavings} </td>
+            <td> {avgLoad} </td>
+            <td> {totalSolar} </td>
+            <td> {totalWind} </td>
+            <td> {totalInverter} </td>
+            <td> {totalStorage} </td>
+            <td> {totalFossil} </td>
+            <td> {avgOutage} </td>
+            <td> {dieselUsed} </td>
+        </tr>
+    </table>
+    </p>
+    '''
+    return retStr
+
+#generates html for financial performance given REopt.jl output json
+def financial_performance_table(testName, json):
+    retStr = f''' <p>
+    Microgrid Lifetime Financial Performance for {testName} <br>
+    <table border=1px cellspacing=0>
+    '''
+    h = [ ["", "Business as Usual", "Microgrid", "Difference"],
+         ["Demand Cost", "", "", ""],
+         ["Energy Cost", "", "", ""],
+         ["Total Cost", "", "", ""] ]
+    
+    et = json.get(('ElectricTariff'),{})
+    f = json.get('Financial',{})
+
+    #todo: round all to 2 decimals [ round(val, 2) ]
+    h[1][1] = et.get("lifecycle_demand_cost_after_tax_bau")
+    h[1][2] = et.get("lifecycle_demand_cost_after_tax")
+    h[1][3] = h[1][1] - h[1][2]
+    h[2][1] = et.get("lifecycle_demand_cost_after_tax_bau")
+    h[2][2] = et.get("lifecycle_demand_cost_after_tax")
+    h[2][3] = h[2][1] - h[2][2]
+    h[3][1] = f.get("lcc_bau")
+    h[3][2] = f.get("lcc")
+    h[3][3] = h[3][1] - h[3][2]
+    
+    for i in range(4):
+        retStr += "<tr>"
+        for j in range(4):
+            isHeader = i == 0 or j == 0
+            retStr += "<th>" if isHeader else "<td>"
+            retStr += str(h[i][j])
+            retStr += "</th>" if isHeader else "</td>"
+        retStr += "</tr>"
+
+    retStr += "</table></p>"
+    return retStr
+
+#todo: generate html for proforma analysis given REopt.jl output json
+def proforma_table(json):
+    retStr = '''<p>
+    <table border=1px cellspacing=0>
+    '''
+    retStr += "</table></p>"
+    return retStr
+
 #displays graph given output data from REopt.jl
 def make_graph(x,ys,xlabel,ylabel,title):
-    plt.figure(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     for (y,label) in ys:
-        plt.plot(x, y, label=label)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
+        if label == "":
+            ax.plot(x,y)
+        else:
+            ax.plot(x, y, label=label)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
     plt.legend()
     plt.grid(True)
-    plt.show()
+    return (fig, ax)
+
+def all_graphs(json, outage_json):
+    retStr = ""
+
+    electricUtility = json.get('ElectricUtility',{})
+    pv = json.get('PV',{})
+    wind = json.get('Wind',{})
+    electricStorage = json.get('ElectricStorage',{})
+    generator = json.get('Generator',{})
+
+    load_overview = []
+    battery_charge_source = []
+    
+    x = np.arange(8760) #8760 = hours in a year
+
+    if electricStorage:
+        load_overview.append((electricStorage['storage_to_load_series_kw'], "Battery to Load"))
+        battery_charge_percentage = [ (electricStorage['soc_series_fraction'],'') ]
+
+        (fig_batt_percent,ax_batt_percent) = make_graph(x, battery_charge_percentage,"time","%", 
+                                                  "Battery Charge Percentage")
+        
+    if pv:
+        load_overview.append((pv['electric_to_load_series_kw'], "PV to Load"))
+        battery_charge_source.append((pv['electric_to_storage_series_kw'], "Solar"))
+
+        solar_generation = [(pv['electric_to_load_series_kw'], "PV used to meet Load")]
+        solar_generation.append((pv['electric_curtailed_series_kw'], "PV Curtailed"))
+        solar_generation.append((pv['electric_to_grid_series_kw'], "PV exported to Grid"))
+        solar_generation.append((pv['electric_to_storage_series_kw'], "PV used to charge Battery"))
+
+        (fig_pv,ax_pv) = make_graph(x, solar_generation,"time","Power (kW)","Solar Generation")
+        retStr += mpld3.fig_to_html(fig_pv)
+
+    if electricUtility:
+        load_overview.append((electricUtility['electric_to_load_series_kw'], "Grid to Load"))
+        battery_charge_source.append((electricUtility['electric_to_storage_series_kw'], "Grid"))
+
+    if wind:
+        load_overview.append((wind['electric_to_load_series_kw'], "Wind to Load"))
+        battery_charge_source.append((wind['electric_to_storage_series_kw'], "Wind"))
+
+        wind_generation = [ (wind['electric_to_load_series_kw'], "Wind used to meet Load") ]
+        wind_generation.append((wind['electric_to_storage_series_kw'], "Wind used to charge Battery"))
+
+        (fig_wind,ax_wind) = make_graph(x, wind_generation,"time","Power (kW)","Wind Generation")
+        retStr += mpld3.fig_to_html(fig_wind)
+
+    if generator:
+        load_overview.append((generator['electric_to_load_series_kw'], "Generator to Load"))
+        battery_charge_source.append((generator['electric_to_storage_series_kw'], "Fossil Gen"))
+        
+        fossil_generation = [ (generator['electric_to_load_series_kw'],"Fossil Gen used to meet Load") ]
+        fossil_generation.append((generator['electric_to_storage_series_kw'],
+                                  "Fossil Gen used to charge Battery"))
+
+        (fig_fossil,ax_fossil) = make_graph(x, fossil_generation,"time","Power (kW)","Fossil Generation")
+        retStr += mpld3.fig_to_html(fig_fossil)
+
+    (fig_load,ax_load) = make_graph(x, load_overview,"time","Power (kW)","Load Overview")
+    retStr = mpld3.fig_to_html(fig_load) + retStr
+
+    if electricStorage:
+        (fig_batt_source,ax_batt_source) = make_graph(x, battery_charge_source,"time","Power (kW)",
+                                                  "Battery Charge Source")
+        retStr += mpld3.fig_to_html(fig_batt_source)
+        retStr += mpld3.fig_to_html(fig_batt_percent)
+
+    if outage_json != None:
+
+        resilience = outage_json["resilience_by_time_step"]
+        res_y = [(resilience,"")]
+        res_x = np.arange(len(resilience))
+        (fig_res,ax_res) = make_graph(res_x, res_y, "Start Hour", "Longest Outage Survived (hours)",
+                                      "Resilience Overview")
+        retStr += mpld3.fig_to_html(fig_res)
+
+        survival_prob_x = outage_json["outage_durations"]
+        survival_prob_y = [(outage_json["probs_of_surviving"], "")]
+
+        (fig_survival, ax_survival) = make_graph(survival_prob_x, survival_prob_y, "Outage Length (hours)",
+                                                "Probability of Meeting Critical Load", 
+                                                "Outage Survival Probability")
+        retStr += mpld3.fig_to_html(fig_survival)
+
+    return retStr
 
 
-#displays results of REopt.jl call (options to display in terminal or through html)
-def display_julia_output_json(filepath, charts="terminal"):
-    #reopt_julia_output_json = {} 
-    #with open(filepath) as jsonFile:
-    #    reopt_julia_output_json = json.load(jsonFile)
-    reopt_julia_output_json = get_json_file(filepath)
+#displays results of REopt.jl call in html file
+def display_julia_output_json(filepath, total_runtime, method="run_reopt"):
+    output_json = get_json_file(filepath)
+    outage_output = get_json_file(filepath + "_outages")
 
-    #todo: account for some sections being optional
-    financial = reopt_julia_output_json['Financial']
-    electricTariff = reopt_julia_output_json['ElectricTariff']
-    electricLoad = reopt_julia_output_json['ElectricLoad']
-    electricUtility = reopt_julia_output_json['ElectricUtility']
-    pv = reopt_julia_output_json['PV']
-    wind = reopt_julia_output_json['Wind']
-    electricStorage = reopt_julia_output_json['ElectricStorage']
-    generator = reopt_julia_output_json['Generator']
+    html_graphs = all_graphs(output_json, outage_output)
 
-    if charts == "terminal":
-        #design overview
-        print("Total solar: " + str(pv['size_kw']))
-        print("Total wind: " + str(wind['size_kw']))
-        print("Total inverter: " + str(electricStorage['size_kw']))
-        print("Total storage: " + str(electricStorage['size_kwh']))
-        print("Total fossil: " + str(generator['size_kw']))
+    html_doc = f'''
+    <body>
+    <p>
+    <b>Total runtime: {total_runtime} seconds</b>
+    </p>
+    {microgrid_overview_table(output_json,outage_output)}
+    {financial_performance_table(output_json)}
+    '''
+    html_doc += html_graphs + "</body>"
+    #to do: different output files based on test name
+    Html_file= open("testFiles/sample_test.html","w")
+    Html_file.write(html_doc)
+    Html_file.close()
 
-        #load overview
-        batt_to_load = (electricStorage['storage_to_load_series_kw'], "Battery to Load")
-        pv_to_load = (pv['electric_to_load_series_kw'], "PV to Load")
-        grid_to_load = (electricUtility['electric_to_load_series_kw'], "Grid to Load")
-        wind_to_load = (wind['electric_to_load_series_kw'], "Wind to Load")
-        diesel_to_load = (generator['electric_to_load_series_kw'], "Generator to Load")
-        ys = [batt_to_load, pv_to_load, grid_to_load, wind_to_load, diesel_to_load]
 
-        x = np.arange(8760) #8760 = hours in a year
+def get_test_overview(testPath, runtime, solver, simulate_outages):
+    tab = "&nbsp;"
+    retStr = "<p>"
+    retStr += "Test File: " + testPath + "<br>"
+    retStr += tab + "Runtime: " + str(runtime) + "<br>"
+    retStr += tab + "Solver: " + solver + "<br>"
+    retStr += tab + "Simulates outages? "
+    retStr += "Yes <br></p>" if simulate_outages else "No <br></p>"
+    return retStr
 
-        make_graph(x, ys,"time","Power (kW)","Load Overview")
 
-        #solar generation
-        #wind generation
-        #fossil generation
-        #battery charge source
-        #battery charge percentage
+#for comparing mutiple test outputs
+# tests = [ (testPath, runtime, solver, simulate_outages ), ... ]
+def html_comparison(tests):
+    html_doc = "<body>"
+    overview_str = ""
+    microgrid_overview_str = ""
+    financial_performance_str = ""
+    graphs = []
 
-    #todo: present basic overview of the data in html
-    elif charts == "html":
-        return 
+    for (testPath, testName, runtime, solver, simulate_outages) in tests:
+        overview_str += get_test_overview(testPath,runtime,solver,simulate_outages)
+
+        output_json = get_json_file(testPath)
+        outage_json = get_json_file(testPath + "_outages")
+        test = testName + " ( solver: " + solver + " )"
+
+        microgrid_overview_str += microgrid_overview_table(test, output_json, outage_json)
+        financial_performance_str += financial_performance_table(test, output_json)
+
+        graph_set = all_graphs(output_json, outage_json)
+        graphs.append((graph_set,test))
+
+    html_doc += overview_str + microgrid_overview_str + financial_performance_str
+    for (graph,test) in graphs:
+        html_doc += "<p> graphs for " + test + "<br>"
+        html_doc += graph + "</p>"
+
+    html_doc += "</body>"
+    html_file= open("testFiles/sample_comparison_test.html","w")
+    html_file.write(html_doc)
+    html_file.close()
 
 ###########################################################################
 #goal: compare outcomes of REopt, REopt.jl, WIIRES on the same test cases 
 ###########################################################################
 
-if __name__ == "__main__":
-    start_time = time.time()
-    
-    #test_filename = "Scenario_test_POST.json"
-    #test_file_path = "/Users/lilyolson/Documents/reopt crash examples/CE Test Case/" + test_filename
-    #reopt_test_json = get_json_file(test_file_path)
+#gives paths for the converted input json and output json from REopt.jl
+def getFilePaths(testName):
+    #todo: make relative
+    path = "/Users/lilyolson/Documents/nreca/wiires/REopt_replacements/testFiles/"
+    #path to write converted input json to
+    converted_input_path = path + "Scenario_test_" + testName #+ ".json"
+    #path to write json output of REopt.jl to
+    outPath = path + "output_" + testName #+ ".json"
+    return (converted_input_path, outPath)
 
-    #test_json_to_jl = convert_to_jl(reopt_test_json)
-    
-    #test_converted_input = "Scenario_test_POST_CE_Test_case.json"
-    #test_outfile = "output_CE.json"
-    #reopt_jl_test(test_json_to_jl,test_converted_input, test_outfile)
-    
+#todo: give option to convert input json for julia (ie: convert = True/False)
+def runFullTest(path, testName, fileName, solver="SCIP", outages=True):
+    start = time.time()
+
+    #to add: if file already exists at outpath and 'get_cached' input = True
+    # => return previous results (to save time when running a lot of test cases)
+    filePath = path + fileName
+    Json = get_json_file(filePath)
+    jl_json = convert_to_jl(Json)
+    (inPath, outPath) = getFilePaths(testName)
+    reopt_jl_test(jl_json, inPath, outPath, solver=solver, outages=outages)
+
+    end = time.time()
+    runtime = end - start
+    #to do: allow for non-SCIP in input
+    return(outPath, testName, runtime, solver, outages)
+
+if __name__ == "__main__":
+    all_tests = []
+
+    test_filename = "Scenario_test_POST" #.json"
+
+    ########### CONWAY_MG_MAX
+    CONWAY_path = "/Users/lilyolson/Documents/reopt crash examples/CONWAY_MG_MAX/"
+    CONWAY_testName = "CONWAY_MG_MAX"
+    CONWAY_filename = test_filename
+    CONWAY_output = runFullTest(CONWAY_path, CONWAY_testName, CONWAY_filename)
+    all_tests.append(CONWAY_output)
+
+    CONWAY_Cbc_output = runFullTest(CONWAY_path, CONWAY_testName, CONWAY_filename, solver="Cbc")
+    all_tests.append(CONWAY_Cbc_output)
+
+    ############### CE test case
+    #to do: give gap size as optional input to reopt_jl_test (or termination time)
+    #CE_path = "/Users/lilyolson/Documents/reopt crash examples/CE Test Case/" + test_filename
+    #CE_json = get_json_file(CE_path)
+    #CE_jl_json = convert_to_jl(CE_json)
+
+    ############## CONWAY_30MAY23_SOLARBATTERY
+    CONWAY_SB_path = "/Users/lilyolson/Documents/reopt crash examples/CONWAY_30MAY23_SOLARBATTERY/"
+    CONWAY_SB_testName = "CONWAY_30MAY23_SOLARBATTERY"
+    CONWAY_SB_filename = test_filename
+    CONWAY_SB_output = runFullTest(CONWAY_SB_path, CONWAY_SB_testName, CONWAY_SB_filename)
+    all_tests.append(CONWAY_SB_output)
+
+    CONWAY_SB_Cbc_output = runFullTest(CONWAY_SB_path, CONWAY_SB_testName, CONWAY_SB_filename, solver="Cbc")
+    all_tests.append(CONWAY_SB_Cbc_output)
+
+    ####### default julia json (from microgridDesign)
+    default_start = time.time()
 
     julia_scenario = init_default_julia_json()
-    path = "/Users/lilyolson/Documents/nreca/wiires/REopt_replacements/testFiles/"
-    test_filepath = path + "Scenario_test_POST_julia.json"
-    test_outfile = path + "output.json"
-    reopt_jl_test(julia_scenario, test_filepath, test_outfile)
-    display_julia_output_json(test_outfile) 
+    (default_in, default_out) = getFilePaths("julia")
+    reopt_jl_test(julia_scenario, default_in, default_out)
+    default_end = time.time()
+    default_runtime = default_end - default_start
+    all_tests.append((default_out, "julia default", default_runtime, "SCIP", ""))
 
-    end_time = time.time()
-    print("time taken")
-    print(end_time - start_time)
+    default_Cbc_start = time.time()
+    reopt_jl_test(julia_scenario, default_in, default_out, solver="Cbc")
+    default_Cbc_end = time.time()
+    default_Cbc_runtime = default_Cbc_end - default_Cbc_start
+    all_tests.append((default_out, "julia default", default_runtime, "Cbc", ""))
+
+    #display_julia_output_json(outputPath, total_runtime, method="simulate_outages")
+
+    html_comparison(all_tests) # work in progress
